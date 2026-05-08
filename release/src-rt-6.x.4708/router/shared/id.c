@@ -118,6 +118,8 @@ static int get_model_once(void)
 		if ((nvram_match("model", "RT-AC88U")) || (nvram_match("productid", "RT-AC88U")) || (nvram_match("odmpid", "RT-AC88U"))) return MODEL_RTAC88U;
 		if ((nvram_match("model", "RT-AC3100")) || (nvram_match("productid", "RT-AC3100")) || (nvram_match("odmpid", "RT-AC3100"))) return MODEL_RTAC3100;
 #ifdef TCONFIG_AC5300
+		if ((nvram_match("modelNumber", "EA9400")))  return MODEL_EA9400; /* Linksys EA9400 (BCM4366B1) */
+		if ((nvram_match("modelNumber", "EA9500")))  return MODEL_EA9500; /* Linksys EA9500 (BCM4366C0) */
 		if ((nvram_match("model", "RT-AC5300")) || (nvram_match("productid", "RT-AC5300")) || (nvram_match("productid", "RT-AC5300R"))) return MODEL_RTAC5300;
 #endif
 #endif /* TCONFIG_BCM714 */

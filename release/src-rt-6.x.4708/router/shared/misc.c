@@ -423,6 +423,8 @@ int wan_led(int mode) /* mode: 0 - OFF, 1 - ON */
 #endif
 #ifdef TCONFIG_AC3200
 #ifdef TCONFIG_AC5300
+	    || (model == MODEL_EA9400)
+	    || (model == MODEL_EA9500)
 	    || (model == MODEL_RTAC5300)
 #endif
 	    || (model == MODEL_RTAC3200)

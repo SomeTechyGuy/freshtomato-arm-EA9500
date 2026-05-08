@@ -230,6 +230,26 @@ void start_usb(void)
 			case MODEL_RTAC3100:
 			case MODEL_RTAC88U:
 #   ifdef TCONFIG_AC5300
+			case MODEL_EA9400:
+			set_gpio(13, T_LOW); /* disable USB 2.0 power */
+				set_gpio(14, T_LOW); /* disable USB 3.0 power */
+				usleep(25 * 1000); /* wait 25 ms */
+				set_gpio(13, T_HIGH); /* enable USB 2.0 power */
+				set_gpio(14, T_HIGH); /* enable USB 3.0 power */
+				usleep(25 * 1000); /* wait 25 ms (again) */
+				usb_reset_once = 1;
+				logmsg(LOG_INFO, "%s: FreshTomato - reset USB Power Supply (done)", nvram_safe_get("t_model_name"));
+				break;
+			case MODEL_EA9500:
+				set_gpio(13, T_LOW); /* disable USB 2.0 power */
+				set_gpio(14, T_LOW); /* disable USB 3.0 power */
+				usleep(25 * 1000); /* wait 25 ms */
+				set_gpio(13, T_HIGH); /* enable USB 2.0 power */
+				set_gpio(14, T_HIGH); /* enable USB 3.0 power */
+				usleep(25 * 1000); /* wait 25 ms (again) */
+				usb_reset_once = 1;
+				logmsg(LOG_INFO, "%s: FreshTomato - reset USB Power Supply (done)", nvram_safe_get("t_model_name"));
+				break;
 			case MODEL_RTAC5300:
 #   endif
 #  endif /* TCONFIG_BCM714 */
@@ -1124,6 +1144,8 @@ static inline void usbled_proc(char *device, int add)
 		case MODEL_RTAC3100:
 		case MODEL_RTAC88U:
 #  ifdef TCONFIG_AC5300
+		case MODEL_EA9400:
+		case MODEL_EA9500:
 		case MODEL_RTAC5300:
 #  endif
 # endif /* TCONFIG_BCM714 */

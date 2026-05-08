@@ -501,6 +501,16 @@ int buttons_main(int argc, char *argv[])
 		ses_led = LED_AOSS; /* Use LED AOSS for feedback if a button is pushed. */
 		break;
 #ifdef TCONFIG_AC5300
+	case MODEL_EA9400:
+		reset_mask = 1 << 17; /* reset button GPIO 17 (active LOW) */
+		ses_mask = 1 << 3;    /* WPS button GPIO 3 (active LOW) */
+		ses_led = LED_AOSS;   /* GPIO 22 WPS LED via AOSS */
+		break;
+	case MODEL_EA9500:
+		reset_mask = 1 << 17; /* reset button GPIO 17 (active LOW) */
+		ses_mask = 1 << 3;    /* WPS button GPIO 3 (active LOW) */
+		ses_led = LED_AOSS;   /* GPIO 22 WPS LED via AOSS */
+		break;
 	case MODEL_RTAC5300:
 		reset_mask = 1 << 11; /* reset button (active LOW) */
 		ses_mask = 1 << 18; /* wps button (active LOW) */
@@ -644,6 +654,8 @@ int buttons_main(int argc, char *argv[])
 #endif /* TCONFIG_BCM714 */
 #ifdef TCONFIG_AC3200
 #ifdef TCONFIG_AC5300
+			     || (model == MODEL_EA9400)
+			     || (model == MODEL_EA9500)
 			     || (model == MODEL_RTAC5300)
 #endif			     
 			     || (model == MODEL_RTAC3200)
@@ -769,6 +781,8 @@ int buttons_main(int argc, char *argv[])
 #endif /* TCONFIG_BCM714 */
 #ifdef TCONFIG_AC3200
 #ifdef TCONFIG_AC5300
+			     || (model == MODEL_EA9400)
+			     || (model == MODEL_EA9500)
 			     || (model == MODEL_RTAC5300)
 #endif
 			     || (model == MODEL_RTAC3200)

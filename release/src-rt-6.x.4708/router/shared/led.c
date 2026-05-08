@@ -160,6 +160,8 @@ int do_led(int which, int mode)
 #ifdef TCONFIG_AC3200
  #ifdef TCONFIG_AC5300
 	static int ac5300[]	= { 254,   -4,     5,  255,   19,    3,   21,   16,   17,  254,  254 };
+	/* ea9500[]: EA9500/EA9400 shares the same GPIO LED layout as RT-AC5300 */
+	/* WLAN/5G/52G are non-GPIO (wl ledbh), DIAG=-GPIO4, WHITE=GPIO5, AOSS=GPIO3, USB=GPIO22, USB3=GPIO22 (same LED) */
  #endif
 	static int ac3200[]	= { 254,  -15,     5,  255,   14,    3,  254,  255,  255,  254,  254 };
 	static int r8000[]	= {  13,    3,     8,  255,  -14,  -15,  254,   18,   17,   12,   16 };
@@ -266,6 +268,8 @@ int do_led(int which, int mode)
 	switch (nvram_match("led_override", "1") ? MODEL_UNKNOWN : model) {
 #ifdef TCONFIG_AC3200
  #ifdef TCONFIG_AC5300
+	case MODEL_EA9400: /* EA9500/EA9400 shares LED GPIO layout with RT-AC5300 */
+	case MODEL_EA9500: /* EA9500/EA9400 shares LED GPIO layout with RT-AC5300 */
 	case MODEL_RTAC5300:
 		b = ac5300[which];
 		if ((which == LED_WLAN) ||
@@ -792,6 +796,8 @@ void led_setup(void)
 		switch (model) {
 #ifdef TCONFIG_AC3200
  #ifdef TCONFIG_AC5300
+		case MODEL_EA9400: 
+		case MODEL_EA9500:
 		case MODEL_RTAC5300:
 			set_gpio(GPIO_03, T_HIGH); /* disable power led */
 			set_gpio(GPIO_04, T_LOW); /* disable button led */
@@ -1009,6 +1015,8 @@ void do_led_nongpio(int model, int which, int mode)
 	switch (model) {
 #ifdef TCONFIG_AC3200
  #ifdef TCONFIG_AC5300
+	case MODEL_EA9400:
+	case MODEL_EA9500: /* EA9500/EA9400: same wl interface mapping as RT-AC5300 (eth1/eth2/eth3) */
 	case MODEL_RTAC5300:
 		if (which == LED_WLAN) {
 			if      (mode == LED_ON)    eval("wl", "-i", "eth1", "ledbh", "9", "1"); /* 2.4 GHz - eth1, see Asus SRC */
