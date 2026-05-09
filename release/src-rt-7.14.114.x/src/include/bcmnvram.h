@@ -239,7 +239,13 @@ extern int nvram_space;
 #define NVRAM_INVALID_MAGIC	0xFFFFFFFF
 #define NVRAM_VERSION		1
 #define NVRAM_HEADER_SIZE	20
-#if (defined(TCONFIG_NVRAM_128K) || defined(CONFIG_NVRAM_128K))
+#ifdef CONFIG_NVSIZE_1536
+#define NVRAM_SPACE             0x180000
+#ifndef MAX_NVRAM_SPACE
+#define MAX_NVRAM_SPACE         0x180000
+#endif
+#define DEF_NVRAM_SPACE         0x180000
+#elif (defined(TCONFIG_NVRAM_128K) || defined(CONFIG_NVRAM_128K))
     /* This definition is for precommit staging, and will be removed */
     #define NVRAM_SPACE			0x20000
     /* For CFE builds this gets passed in thru the makefile */

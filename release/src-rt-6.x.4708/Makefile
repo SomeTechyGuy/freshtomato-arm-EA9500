@@ -88,6 +88,12 @@ else
  endif
 endif
 
+ifeq ($(NVRAM_1536K),y)
+ EXTRA_64KCFLAG = -DTCONFIG_NVRAM_1536K
+ EXTRA_64KDESC = "-1536K"
+  ifneq ($(NVSIZE),)
+   EXTRA_64KCFLAG += -DCONFIG_NVSIZE_1536
+
 NOSMP_DESC =
 ifeq ($(ASUS_TRX),ASUS)
  ifneq ($(BCMSMP),y)
@@ -464,6 +470,10 @@ define RouterOptions
 	if [ "$(NVRAM_128K)" = "y" ]; then \
 		sed -i "/TCONFIG_NVRAM_128K/d" $(1); \
 	 	echo "TCONFIG_NVRAM_128K=y" >>$(1); \
+	fi; \
+	if [ "$(NVRAM_1536K)" = "y" ]; then \
+        sed -i "/TCONFIG_NVRAM_1536K/d" $(1); \
+        echo "TCONFIG_NVRAM_1536K=y" >>$(1); \
 	fi; \
 	if [ "$(DRAM_512M)" = "y" ]; then \
 		sed -i "/TCONFIG_DRAM_512M/d" $(1); \
@@ -1103,6 +1113,12 @@ define KernelConfig
 		echo "CONFIG_NVRAM_128K=y" >>$(1); \
 	else \
 		echo "# CONFIG_NVRAM_128K is not set" >>$(1); \
+	fi; \
+	sed -i "/CONFIG_NVRAM_1536K/d" $(1); \
+	if [ "$(NVRAM_1536K)" = "y" ]; then \
+		echo "CONFIG_NVRAM_1536K=y" >>$(1); \
+	else \
+		echo "# CONFIG_NVRAM_1536K is not set" >>$(1); \
 	fi; \
 	sed -i "/CONFIG_DRAM_512M/d" $(1); \
 	if [ "$(DRAM_512M)" = "y" ]; then \

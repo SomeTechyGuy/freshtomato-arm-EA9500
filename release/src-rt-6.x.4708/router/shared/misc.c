@@ -415,6 +415,8 @@ int wan_led(int mode) /* mode: 0 - OFF, 1 - ON */
 	    || (model == MODEL_EA6400)
 	    || (model == MODEL_EA6700)
 	    || (model == MODEL_EA6900)
+		|| (model == MODEL_EA9400)
+		|| (model == MODEL_EA9500)
 	    || (model == MODEL_R1D)
 	    || (model == MODEL_WZR1750)
 #ifdef TCONFIG_BCM714

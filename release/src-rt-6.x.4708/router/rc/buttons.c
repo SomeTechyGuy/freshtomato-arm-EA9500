@@ -502,10 +502,6 @@ int buttons_main(int argc, char *argv[])
 		break;
 #ifdef TCONFIG_AC5300
 	case MODEL_EA9400:
-		reset_mask = 1 << 17; /* reset button GPIO 17 (active LOW) */
-		ses_mask = 1 << 3;    /* WPS button GPIO 3 (active LOW) */
-		ses_led = LED_AOSS;   /* GPIO 22 WPS LED via AOSS */
-		break;
 	case MODEL_EA9500:
 		reset_mask = 1 << 17; /* reset button GPIO 17 (active LOW) */
 		ses_mask = 1 << 3;    /* WPS button GPIO 3 (active LOW) */

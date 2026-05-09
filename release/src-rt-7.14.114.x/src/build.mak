@@ -19,8 +19,18 @@ ifneq ($(ASUS_TRX),0)
 	ctools/objcopy -O binary -R .note -R .note.gnu.build-id -R .comment -S $(LINUXDIR)/vmlinux ctools/piggy
 	ctools/lzma_4k e ctools/piggy  ctools/vmlinuz-lzma
 
-# for Tri-Band SDK7.14 (currently only Asus RT-AC5300)/for Dual-Band SDK7.14 (currently Asus RT-AC3100 and RT-AC88U)
+# for linksys EA9400/EA9500
+ ifeq ($(ASUS_TRX),LINKSYS)
+	$(call CREATE_INJECT_MODEL,freshtomato-EA9400-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,EA9400,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
+	$(call CREATE_INJECT_MODEL,freshtomato-EA9500-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,EA9500,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
+ endif
+	@rm -f image/linux-lzma.trx
+	@echo ""
+endif
+
+# for RT-AC5300/for Dual-Band SDK7.14 (currently Asus RT-AC3100 and RT-AC88U)
  ifeq ($(AC5300),y)
+  ifeq ($(ASUS_TRX),ASUS)
 	$(call CREATE_INJECT_MODEL,freshtomato-RT-AC5300-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC5300,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
  else # AC5300
   ifneq ($(EXTSW),y)

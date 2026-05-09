@@ -896,18 +896,13 @@ static void init_lan_hwaddr(void)
 		}
 	}
 #ifdef TCONFIG_AC5300
-	else if (model == MODEL_EA9400) {
-		etxmac = nvram_safe_get("et2macaddr"); /* EA9500/EA9400: LAN MAC from et2macaddr (GMAC3 switch) */
-		if (!nvram_match("lan_hwaddr", (char *)etxmac) && (strlen(etxmac) >= 17)) {
-			nvram_set("lan_hwaddr", etxmac);
-		}
-	}
-	else if (model == MODEL_EA9500) {
-		etxmac = nvram_safe_get("et2macaddr"); /* EA9500/EA9400: LAN MAC from et2macaddr (GMAC3 switch) */
-		if (!nvram_match("lan_hwaddr", (char *)etxmac) && (strlen(etxmac) >= 17)) {
-			nvram_set("lan_hwaddr", etxmac);
-		}
-	}
+	else if (model == MODEL_EA9400 || model == MODEL_EA9500) {
+    etxmac = nvram_safe_get("et2macaddr"); /* base LAN MAC on EA9x00 (GMAC3 switch) */
+    if (!nvram_match("lan_hwaddr", (char *)etxmac) && (strlen(etxmac) >= 17)) {
+        nvram_set("lan_hwaddr", etxmac);
+        nvram_set("et0macaddr", etxmac);
+    }
+}
 	else if(model == MODEL_RTAC5300) {
 		etxmac = nvram_safe_get("et1macaddr");
 		if (!nvram_match("lan_hwaddr", (char *)etxmac) && (strlen(etxmac) >= 17)) {
@@ -1231,9 +1226,6 @@ static int init_vlan_ports(void)
 #endif
 #ifdef TCONFIG_AC5300
 	case MODEL_EA9400:
-		dirty |= check_nv("vlan1ports", "2 1 3 0 5 7 8*"); /* 8 LAN ports; CPU port 8 (BCM53125S switch) */
-		dirty |= check_nv("vlan2ports", "4 8");             /* WAN port 4 + CPU port 8 */
-		break;
 	case MODEL_EA9500:
 		dirty |= check_nv("vlan1ports", "2 1 3 0 5 7 8*"); /* 8 LAN ports; CPU port 8 (BCM53125S switch) */
 		dirty |= check_nv("vlan2ports", "4 8");             /* WAN port 4 + CPU port 8 */
@@ -1848,33 +1840,17 @@ static void check_bootnv(void)
 #ifdef TCONFIG_AC3200
 #ifdef TCONFIG_AC5300
 	case MODEL_EA9400:
-		nvram_unset("et0macaddr"); /* unset! - not used on EA9400 */
-		nvram_unset("et0mdcport");
-		nvram_unset("et0phyaddr");
-		nvram_unset("et1macaddr"); /* unset! - not used on EA9400 */
-		nvram_unset("et1mdcport");
-		nvram_unset("et1phyaddr");
-		nvram_unset("fwd_wlandevs"); /* unset! */
-		nvram_unset("fwd_cpumap");
-		nvram_unset("fwddevs");
-		dirty |= check_nv("rgmii_port", "5"); /* RGMII_BRCM5301X */
-		dirty |= check_nv("vlan1hwname", "et2"); /* EA9400: switch is et2 (GMAC3) */
-		dirty |= check_nv("vlan2hwname", "et2");
-		break;
 	case MODEL_EA9500:
-		nvram_unset("et0macaddr"); /* unset! - not used on EA9500 */
-		nvram_unset("et0mdcport");
-		nvram_unset("et0phyaddr");
-		nvram_unset("et1macaddr"); /* unset! - not used on EA9500 */
-		nvram_unset("et1mdcport");
-		nvram_unset("et1phyaddr");
-		nvram_unset("fwd_wlandevs"); /* unset! */
-		nvram_unset("fwd_cpumap");
-		nvram_unset("fwddevs");
-		dirty |= check_nv("rgmii_port", "5"); /* RGMII_BRCM5301X */
-		dirty |= check_nv("vlan1hwname", "et2"); /* EA9500: switch is et2 (GMAC3) */
-		dirty |= check_nv("vlan2hwname", "et2");
-		break;
+    	nvram_unset("et0macaddr");
+    	nvram_unset("et0mdcport");
+    	nvram_unset("et0phyaddr");
+    	nvram_unset("et1macaddr");
+    	nvram_unset("et1mdcport");
+    	nvram_unset("et1phyaddr");
+ 		dirty |= check_nv("rgmii_port", "5");
+    	dirty |= check_nv("vlan1hwname", "et2");
+    	dirty |= check_nv("vlan2hwname", "et2");
+    	break;
 	case MODEL_RTAC5300:
 		nvram_unset("et2macaddr"); /* unset! */
 		nvram_unset("et2mdcport");
@@ -10640,181 +10616,82 @@ static int init_nvram(void)
 #ifdef TCONFIG_AC3200
 #ifdef TCONFIG_AC5300
 	case MODEL_EA9400:
-		mfr = "Linksys";
-		name = "EA9400";
-		features = SUP_SES | SUP_80211N | SUP_1000ET | SUP_80211AC | SUP_80211AC_WAVE2;
-#ifdef TCONFIG_USB
-		nvram_set("usb_uhci", "-1");
-#endif
-		if (!nvram_match("t_fix1", (char *)name)) {
-			nvram_set("vlan1hwname", "et2"); /* EA9500/EA9400: switch is et2 (GMAC3/BCM53125S) */
-			nvram_set("vlan2hwname", "et2");
-			nvram_set("lan_ifname", "br0");
-			nvram_set("landevs", "vlan1 wl0 wl1 wl2");
-			nvram_set("lan_ifnames", "vlan1 eth1 eth2 eth3");
-			nvram_set("wan_ifnames", "vlan2");
-			nvram_set("wan_ifnameX", "vlan2");
-			nvram_set("wandevs", "vlan2");
-			nvram_set("wl_ifnames", "eth1 eth2 eth3");
-			nvram_set("wl_ifname", "eth1");
-			nvram_set("wl0_ifname", "eth1");   /* 5 GHz low  (devpath2 pcie/1/3/) */
-			nvram_set("wl1_ifname", "eth2");   /* 2.4 GHz    (devpath1 pcie/1/4/) */
-			nvram_set("wl2_ifname", "eth3");   /* 5 GHz high (devpath3 pcie/2/1/) */
-			nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
-			nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
-			nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
-
-			/* GMAC3 variables */
-			nvram_set("stop_gmac3", "1"); /* disable gmac3 (blackbox) */
-			nvram_set("gmac3_enable", "0");
-
-			/* RGMII_BRCM5301X */
-			nvram_set("rgmii_port", "5");
-
-			/* PCIe devpaths (from EA9400 NVRAM dump) */
-			nvram_set("devpath1", "pcie/1/4/"); /* 2.4 GHz  = eth2 (wl1) */
-			nvram_set("devpath2", "pcie/1/3/"); /* 5 GHz low = eth1 (wl0) */
-			nvram_set("devpath3", "pcie/2/1/"); /* 5 GHz high = eth3 (wl2) */
-
-			/* misc LED settings */
-			nvram_set("1:ledbh9", "0x7");
-			nvram_set("2:ledbh9", "0x7");
-			nvram_set("3:ledbh9", "0x7");
-
-			/* setup MAC addresses from et2macaddr (GMAC3 LAN switch) */
-			strlcpy(s, nvram_safe_get("et2macaddr"), sizeof(s));
-			nvram_set("wl0_hwaddr", s);		/* 5 GHz low  - eth1 */
-			inc_mac(s, +4, sizeof(s));		/* skip VIF range */
-			nvram_set("wl1_hwaddr", s);		/* 2.4 GHz   - eth2 */
-			inc_mac(s, +4, sizeof(s));
-			nvram_set("wl2_hwaddr", s);		/* 5 GHz high - eth3 */
-
-			/* USB: 1x USB3.0 (xhci 1-1) + 1x USB2.0 (ehci 2-2) */
-			nvram_set("usb_usb3", "1");
-			nvram_set("xhci_ports", "1-1");
-			nvram_set("ehci_ports", "2-2");
-			nvram_set("ohci_ports", "3-2");
-
-			/* misc settings */
-			nvram_set("boot_wait", "on");
-			nvram_set("wait_time", "3");
-
-			/* wifi settings/channels */
-			/* wl0 (eth1) - 5 GHz low */
-			nvram_set("wl0_bw_cap", "7");
-			nvram_set("wl0_chanspec", "36/80");
-			nvram_set("wl0_channel", "36");
-			nvram_set("wl0_nbw", "80");
-			nvram_set("wl0_nbw_cap", "3");
-			nvram_set("wl0_nctrlsb", "lower");
-
-			/* wl1 (eth2) - 2.4 GHz */
-			nvram_set("wl1_bw_cap", "3");
-			nvram_set("wl1_chanspec", "6u");
-			nvram_set("wl1_channel", "6");
-			nvram_set("wl1_nbw", "40");
-			nvram_set("wl1_nbw_cap", "1");
-			nvram_set("wl1_nctrlsb", "upper");
-
-			/* wl2 (eth3) - 5 GHz high */
-			nvram_set("wl2_bw_cap", "7");
-			nvram_set("wl2_chanspec", "161/80");
-			nvram_set("wl2_channel", "161");
-			nvram_set("wl2_nbw", "80");
-			nvram_set("wl2_nbw_cap", "3");
-			nvram_set("wl2_nctrlsb", "lower");
-
-			nvram_set("t_fix1", (char *)name);
-		}
-		break;
 	case MODEL_EA9500:
-		mfr = "Linksys";
-		name = "EA9500";
-		features = SUP_SES | SUP_80211N | SUP_1000ET | SUP_80211AC | SUP_80211AC_WAVE2;
+    mfr = "Linksys";
+    name = (model == MODEL_EA9400) ? "EA9400" : "EA9500";
+    features = SUP_SES | SUP_80211N | SUP_1000ET | SUP_80211AC;
 #ifdef TCONFIG_USB
-		nvram_set("usb_uhci", "-1");
+    nvram_set("usb_uhci", "-1");
 #endif
-		if (!nvram_match("t_fix1", (char *)name)) {
-			nvram_set("vlan1hwname", "et2"); /* EA9500/EA9400: switch is et2 (GMAC3/BCM53125S) */
-			nvram_set("vlan2hwname", "et2");
-			nvram_set("lan_ifname", "br0");
-			nvram_set("landevs", "vlan1 wl0 wl1 wl2");
-			nvram_set("lan_ifnames", "vlan1 eth1 eth2 eth3");
-			nvram_set("wan_ifnames", "vlan2");
-			nvram_set("wan_ifnameX", "vlan2");
-			nvram_set("wandevs", "vlan2");
-			nvram_set("wl_ifnames", "eth1 eth2 eth3");
-			nvram_set("wl_ifname", "eth1");
-			nvram_set("wl0_ifname", "eth1");   /* 5 GHz low  (devpath2 pcie/1/3/) */
-			nvram_set("wl1_ifname", "eth2");   /* 2.4 GHz    (devpath1 pcie/1/4/) */
-			nvram_set("wl2_ifname", "eth3");   /* 5 GHz high (devpath3 pcie/2/1/) */
-			nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
-			nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
-			nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
+    if (!nvram_match("t_fix1", (char *)name)) {
+        /* LAN/WAN interface setup - switch is et2 (GMAC3), confirmed from nvram */
+        nvram_set("vlan1hwname", "et2");
+        nvram_set("vlan2hwname", "et2");
+        nvram_set("lan_ifname", "br0");
+        nvram_set("landevs", "vlan1 wl0 wl1 wl2");
+        nvram_set("lan_ifnames", "vlan1 eth1 eth2 eth3");
+        nvram_set("wan_ifnames", "vlan2");
+        nvram_set("wan_ifnameX", "vlan2");
+        nvram_set("wandevs", "vlan2");
+        nvram_set("wl_ifnames", "eth1 eth2 eth3");
+        nvram_set("wl_ifname", "eth1");
+        nvram_set("wl0_ifname", "eth1");   /* 2.4GHz */
+        nvram_set("wl1_ifname", "eth2");   /* 5GHz low */
+        nvram_set("wl2_ifname", "eth3");   /* 5GHz high */
+        nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
+        nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
+        nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
 
-			/* GMAC3 variables */
-			nvram_set("stop_gmac3", "1"); /* disable gmac3 (blackbox) */
-			nvram_set("gmac3_enable", "0");
+        /* MAC addresses - hw_mac_addr holds the real base MAC (...:35)
+         * et0macaddr is zeroed in hardware, derive from hw_mac_addr */
+        strlcpy(s, nvram_safe_get("hw_mac_addr"), sizeof(s));
+        nvram_set("et0macaddr", s);         /* set LAN base MAC */
+        nvram_set("lan_hwaddr", s);
+        /* radio MACs come from nvram as-is (1:macaddr, 2:macaddr, 3:macaddr) */
+        nvram_set("wl0_hwaddr", nvram_safe_get("2:macaddr")); /* 2.4GHz = eth1 */
+        nvram_set("wl1_hwaddr", nvram_safe_get("1:macaddr")); /* 5GHz-1 = eth2 */
+        nvram_set("wl2_hwaddr", nvram_safe_get("3:macaddr")); /* 5GHz-2 = eth3 */
 
-			/* RGMII_BRCM5301X */
-			nvram_set("rgmii_port", "5");
+        /* GMAC3 forwarding - preserve stock values */
+        nvram_set("fwd_cpumap", "d:l:5:163:0 d:x:2:163:0 d:u:5:169:1");
+        nvram_set("fwddevs", "fwd0 fwd1");
 
-			/* PCIe devpaths (from EA9500 NVRAM dump) */
-			nvram_set("devpath1", "pcie/1/4/"); /* 2.4 GHz  = eth2 (wl1) */
-			nvram_set("devpath2", "pcie/1/3/"); /* 5 GHz low = eth1 (wl0) */
-			nvram_set("devpath3", "pcie/2/1/"); /* 5 GHz high = eth3 (wl2) */
+        /* USB */
+        nvram_set("usb_usb3", "1");
+        nvram_set("xhci_ports", "1-1");
+        nvram_set("ehci_ports", "2-1 2-2");
+        nvram_set("ohci_ports", "3-1 3-2");
 
-			/* misc LED settings */
-			nvram_set("1:ledbh9", "0x7");
-			nvram_set("2:ledbh9", "0x7");
-			nvram_set("3:ledbh9", "0x7");
+        /* misc */
+        nvram_set("boot_wait", "on");
+        nvram_set("wait_time", "3");
 
-			/* setup MAC addresses from et2macaddr (GMAC3 LAN switch) */
-			strlcpy(s, nvram_safe_get("et2macaddr"), sizeof(s));
-			nvram_set("wl0_hwaddr", s);		/* 5 GHz low  - eth1 */
-			inc_mac(s, +4, sizeof(s));		/* skip VIF range */
-			nvram_set("wl1_hwaddr", s);		/* 2.4 GHz   - eth2 */
-			inc_mac(s, +4, sizeof(s));
-			nvram_set("wl2_hwaddr", s);		/* 5 GHz high - eth3 */
+        /* wifi channels - tri-band defaults */
+        nvram_set("wl0_bw_cap", "3");
+        nvram_set("wl0_chanspec", "6u");
+        nvram_set("wl0_channel", "6");
+        nvram_set("wl0_nbw", "40");
+        nvram_set("wl0_nctrlsb", "upper");
+        nvram_set("wl1_bw_cap", "7");
+        nvram_set("wl1_chanspec", "36/80");
+        nvram_set("wl1_channel", "36");
+        nvram_set("wl1_nbw", "80");
+        nvram_set("wl1_nbw_cap", "3");
+        nvram_set("wl1_nctrlsb", "lower");
+        nvram_set("wl2_bw_cap", "7");
+        nvram_set("wl2_chanspec", "100/80");
+        nvram_set("wl2_channel", "100");
+        nvram_set("wl2_nbw", "80");
+        nvram_set("wl2_nbw_cap", "3");
+        nvram_set("wl2_nctrlsb", "lower");
 
-			/* USB: 1x USB3.0 (xhci 1-1) + 1x USB2.0 (ehci 2-2) */
-			nvram_set("usb_usb3", "1");
-			nvram_set("xhci_ports", "1-1");
-			nvram_set("ehci_ports", "2-2");
-			nvram_set("ohci_ports", "3-2");
-
-			/* misc settings */
-			nvram_set("boot_wait", "on");
-			nvram_set("wait_time", "3");
-
-			/* wifi settings/channels */
-			/* wl0 (eth1) - 5 GHz low */
-			nvram_set("wl0_bw_cap", "7");
-			nvram_set("wl0_chanspec", "36/80");
-			nvram_set("wl0_channel", "36");
-			nvram_set("wl0_nbw", "80");
-			nvram_set("wl0_nbw_cap", "3");
-			nvram_set("wl0_nctrlsb", "lower");
-
-			/* wl1 (eth2) - 2.4 GHz */
-			nvram_set("wl1_bw_cap", "3");
-			nvram_set("wl1_chanspec", "6u");
-			nvram_set("wl1_channel", "6");
-			nvram_set("wl1_nbw", "40");
-			nvram_set("wl1_nbw_cap", "1");
-			nvram_set("wl1_nctrlsb", "upper");
-
-			/* wl2 (eth3) - 5 GHz high */
-			nvram_set("wl2_bw_cap", "7");
-			nvram_set("wl2_chanspec", "161/80");
-			nvram_set("wl2_channel", "161");
-			nvram_set("wl2_nbw", "80");
-			nvram_set("wl2_nbw_cap", "3");
-			nvram_set("wl2_nctrlsb", "lower");
-
-			nvram_set("t_fix1", (char *)name);
-		}
-		break;
+        /* devpaths - confirmed from nvram dump */
+        nvram_set("devpath1", "pcie/1/4/");
+        nvram_set("devpath2", "pcie/1/3/");
+        nvram_set("devpath3", "pcie/2/1/");
+        nvram_set("partialboots", "0");
+    }
+    break;
 	case MODEL_RTAC5300:
 		mfr = "Asus";
 		name = "RT-AC5300";

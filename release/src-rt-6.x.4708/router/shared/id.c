@@ -29,6 +29,8 @@ EA6900		    		BCM4708               0xD646       01        0x1100    0x0110
 EA6200		    		BCM47081A0            0xE646       20130125  0x1100
 EA6350v1	    		BCM47081A0            0xE646       20140309  0x1200    0x00000110  0:devid=0x43A9
 EA6350v2	    		BCM4708C0             0xE646       20150309  0x1200    0x00000110  0:devid=0x43A9
+EA9400                  BCM4709C0             0xA72F       20150630  0x1100    0x00000110
+EA9500                  BCM4709C0             0xA72F       20150630  0x1100    0x00000110
 
 WZR-1750DHP	    		BCM4708               0xF646       00        0x1100    0x0110      0:devid=0x4332
 
@@ -97,6 +99,7 @@ int check_hw_type(void)
 	case 0xd646:	/* EA6900 */
 	case 0xe646:	/* EA6200, EA6350v1 */
 	case 0x072f:	/* RT-AC5300, RT-AC88U, RT-AC3200, RT-AC1900P, RT-AC68U B2 */
+	case 0xa72f:	/* EA9400, EA9500 */
 		return HW_BCM4708; /* and also for 4709 right now!  */
 #endif /* CONFIG_BCMWL6A */
 	}
