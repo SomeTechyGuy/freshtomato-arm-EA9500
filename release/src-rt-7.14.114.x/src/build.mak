@@ -29,17 +29,18 @@ ifneq ($(ASUS_TRX),0)
 endif
 
 # for RT-AC5300/for Dual-Band SDK7.14 (currently Asus RT-AC3100 and RT-AC88U)
- ifeq ($(AC5300),y)
-  ifeq ($(ASUS_TRX),ASUS)
-	$(call CREATE_INJECT_MODEL,freshtomato-RT-AC5300-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC5300,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
+ifeq ($(AC5300),y)
+ifneq ($(ASUS_TRX),LINKSYS)
+ ifeq ($(ASUS_TRX),ASUS)
+        $(call CREATE_INJECT_MODEL,freshtomato-RT-AC5300-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC5300,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
  else # AC5300
   ifneq ($(EXTSW),y)
-	$(call CREATE_INJECT_MODEL,freshtomato-RT-AC3100-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC3100,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
-  else # EXTSW (so far only RT-AC88U)
-	$(call CREATE_INJECT_MODEL,freshtomato-RT-AC88U-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC88U,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
+        $(call CREATE_INJECT_MODEL,freshtomato-RT-AC3100-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC3100,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
+  else # EXTSW
+        $(call CREATE_INJECT_MODEL,freshtomato-RT-AC88U-$(branch_rev)-$(current_TOMATO_VER)$(beta)$(current_V2)-$(current_BUILD_DESC).trx,RT-AC88U,3.0.0.4,$(FORCE_SN),$(FORCE_EN))
   endif # EXTSW
  endif
-
-	@rm -f image/linux-lzma.trx
-	@echo ""
-endif
+         @rm -f image/linux-lzma.trx
+         @echo ""
+endif # not LINKSYS
+endif # AC5300
