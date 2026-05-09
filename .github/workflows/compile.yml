@@ -1,0 +1,103 @@
+name: Build FreshTomato ea9400-128e
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/freshtomato-builder
+
+jobs:
+  docker:
+    name: Build or restore Docker image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure nss_wrapper is executable
+        run: chmod +x docker/nss_wrapper
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push builder image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          push: true
+          # tag with a hash of the docker files so stale images are never used
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/freshtomato-builder:latest
+            ghcr.io/${{ github.repository_owner }}/freshtomato-builder:${{ hashFiles('docker/Dockerfile', 'docker/nss_wrapper') }}
+          # registry cache survives across runners and repos
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/freshtomato-builder:cache
+          cache-to:   type=registry,ref=ghcr.io/${{ github.repository_owner }}/freshtomato-builder:cache,mode=max
+
+      - name: Output image ref
+        id: image
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/freshtomato-builder:${{ hashFiles('docker/Dockerfile', 'docker/nss_wrapper') }}" >> "$GITHUB_OUTPUT"
+
+  firmware:
+    name: Compile ea9400-128e firmware
+    runs-on: ubuntu-latest
+    needs: docker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull builder image
+        run: docker pull ${{ needs.docker.outputs.image }}
+
+      # Cache the compiler output so incremental builds skip unchanged objects.
+      # Key includes the commit sha so a full rebuild happens on each new commit,
+      # but the restore-key falls back to the most recent cache from this branch.
+      - name: Cache build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            release/src-rt-7.14.114.x/src/router
+            release/src-rt-7.14.114.x/src/linux
+          key: build-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ github.ref_name }}-
+            build-
+
+      - name: Build ea9400-128e firmware
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/ws \
+            --user "$(id -u):$(id -g)" \
+            ${{ needs.docker.outputs.image }} \
+            make -j$(nproc) -C /ws/release/src-rt-7.14.114.x/src ea9400-128e
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ea9400-128e-${{ github.sha }}
+          path: |
+            release/src-rt-7.14.114.x/src/image/*.trx
+            release/src-rt-7.14.114.x/src/image/*.bin
+          if-no-files-found: warn
+          retention-days: 30
