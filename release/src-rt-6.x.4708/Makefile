@@ -556,10 +556,14 @@ define RouterOptions
 			echo "# TCONFIG_BCM714 is not set" >>$(1); \
 		fi; \
 	fi; \
-	if [ "$(DHDAP)" = "y" ]; then \
-		sed -i "/TCONFIG_DHDAP/d" $(1); \
-		echo "TCONFIG_DHDAP=y" >>$(1); \
-	fi; \
+		sed -i "/CONFIG_DHDAP/d" $(1); \
+		if [ "$(DHDAP)" = "y" ]; then \
+                sed -i "/TCONFIG_DHDAP/d" $(1); \
+                echo "TCONFIG_DHDAP=y" >>$(1); \
+                echo "CONFIG_DHDAP=y" >>$(1); \
+        else \
+                echo "# CONFIG_DHDAP is not set" >>$(1); \
+        fi; \
 	if [ "$(AC3200)" = "y" ]; then \
 		sed -i "/TCONFIG_AC3200/d" $(1); \
 		echo "TCONFIG_AC3200=y" >>$(1); \
