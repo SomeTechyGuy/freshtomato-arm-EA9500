@@ -1182,6 +1182,12 @@ define KernelConfig
 	else \
 		echo "# CONFIG_FAILSAFE_UPGRADE is not set" >> $(1); \
 	fi; \
+	sed -i "/CONFIG_DHDAP/d" $(1); \
+    if [ "$(DHDAP)" = "y" ]; then \
+        echo "CONFIG_DHDAP=y" >>$(1); \
+    else \
+        echo "# CONFIG_DHDAP is not set" >>$(1); \
+    fi; \
 	if [ "$(CRASH_LOG)" = "y" ]; then \
 		sed -i "/CONFIG_CRASHLOG/d" $(1); \
 		echo "CONFIG_CRASHLOG=y" >>$(1); \
