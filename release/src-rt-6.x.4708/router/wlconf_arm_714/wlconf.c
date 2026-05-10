@@ -129,6 +129,7 @@
 		fprintf(stderr, "%s:%d:(%s): setting bsscfg #%d iovar \"%s\" " \
 				"to val 0x%x failed, err = %d\n",	\
 		        __FUNCTION__, __LINE__, ifname, bssidx, iovar, (unsigned int)val, ret);
+#define DHD_BSSIOVAR_SETINT(ifname, iovar, bssidx, val) do {} while(0)
 #endif
 #else
 #define WLCONF_DBG(fmt, arg...)
@@ -152,6 +153,8 @@
 #ifdef __CONFIG_DHDAP__
 #define DHD_BSSIOVAR_SETINT(ifname, iovar, bssidx, val)	(ret = dhd_bssiovar_setint(ifname, iovar, \
 			bssidx, val))
+#else
+#define DHD_BSSIOVAR_SETINT(ifname, iovar, bssidx, val) do {} while(0)
 #endif
 #endif /* BCMDBG */
 
