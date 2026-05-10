@@ -1229,6 +1229,7 @@ static int init_vlan_ports(void)
 	case MODEL_EA9500:
 		dirty |= check_nv("vlan1ports", "2 1 3 0 5 7 8*"); /* 8 LAN ports; CPU port 8 (BCM53125S switch) */
 		dirty |= check_nv("vlan2ports", "4 8");             /* WAN port 4 + CPU port 8 */
+		dirty |= check_nv("dhd24", "1"); /* use dhd24 module - has BCM4366B1/C0 firmware embedded */
 		break;
 	case MODEL_RTAC5300:
 		dirty |= check_nv("vlan1ports", "1 2 3 4 7*");
@@ -10689,6 +10690,7 @@ static int init_nvram(void)
         nvram_set("devpath1", "pcie/1/4/");
         nvram_set("devpath2", "pcie/1/3/");
         nvram_set("devpath3", "pcie/2/1/");
+		nvram_set("dhd24", "1");    /* use dhd24 module - has BCM4366B1/C0 firmware embedded */
         nvram_set("partialboots", "0");
     }
     break;
