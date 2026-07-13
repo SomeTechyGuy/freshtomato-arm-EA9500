@@ -379,6 +379,12 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         tmp_len = 0;
 
     } else {
+        if (method.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "too long http2 method: \"%V\"", &method);
+            return NGX_ERROR;
+        }
+
         len += 1 + NGX_HTTP_V2_INT_OCTETS + method.len;
         tmp_len = method.len;
     }
@@ -419,6 +425,12 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    if (uri_len > NGX_HTTP_V2_MAX_FIELD) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "too long http2 URI");
+        return NGX_ERROR;
+    }
+
     len += 1 + NGX_HTTP_V2_INT_OCTETS + uri_len;
 
     if (tmp_len < uri_len) {
@@ -430,6 +442,12 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     host = &ctx->ctx.vars.host_header;
 
     if (!plcf->host_set) {
+        if (host->len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "too long http2 host: \"%V\"", host);
+            return NGX_ERROR;
+        }
+
         len += 1 + NGX_HTTP_V2_INT_OCTETS + host->len;
 
         if (tmp_len < host->len) {
@@ -458,9 +476,6 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
         ctx->ctx.internal_body_length = body_len;
 
-        len += sizeof(ngx_http_proxy_v2_frame_t);
-        len += body_len;
-
     } else if (r->headers_in.chunked && r->reading_body) {
         ctx->ctx.internal_body_length = -1;
 
@@ -484,6 +499,18 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
         if (val_len == 0) {
             continue;
+        }
+
+        if (key_len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "too long http2 header name");
+            return NGX_ERROR;
+        }
+
+        if (val_len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "too long http2 header value");
+            return NGX_ERROR;
         }
 
         len += 1 + NGX_HTTP_V2_INT_OCTETS + key_len
@@ -518,6 +545,20 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
                               header[i].lowcase_key, header[i].key.len))
             {
                 continue;
+            }
+
+            if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "too long http2 header name: \"%V\"",
+                              &header[i].key);
+                return NGX_ERROR;
+            }
+
+            if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "too long http2 header value: \"%V: %V\"",
+                              &header[i].key, &header[i].value);
+                return NGX_ERROR;
             }
 
             len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
@@ -834,34 +875,6 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
     f->flags |= NGX_HTTP_V2_END_HEADERS_FLAG;
 
-    if (plcf->body_values) {
-        f = (ngx_http_proxy_v2_frame_t *) b->last;
-        b->last += sizeof(ngx_http_proxy_v2_frame_t);
-
-        f->length_0 = (u_char) ((body_len >> 16) & 0xff);
-        f->length_1 = (u_char) ((body_len >> 8) & 0xff);
-        f->length_2 = (u_char) (body_len & 0xff);
-        f->type = NGX_HTTP_V2_DATA_FRAME;
-        f->flags = NGX_HTTP_V2_END_STREAM_FLAG;
-        f->stream_id_0 = 0;
-        f->stream_id_1 = 0;
-        f->stream_id_2 = 0;
-        f->stream_id_3 = 1;
-
-        e.ip = plcf->body_values->elts;
-        e.pos = b->last;
-        e.request = r;
-        e.flushed = 1;
-        e.skip = 0;
-
-        while (*(uintptr_t *) e.ip) {
-            code = *(ngx_http_script_code_pt *) e.ip;
-            code((ngx_http_script_engine_t *) &e);
-        }
-
-        b->last = e.pos;
-    }
-
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy header: %*xs%s, len: %uz",
                    (size_t) ngx_min(b->last - b->pos, 256), b->pos,
@@ -903,13 +916,44 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
         b->last_buf = 1;
 
+    } else if (body_len) {
+
+        u->request_bufs = cl;
+
+        b = ngx_create_temp_buf(r->pool, body_len);
+        if (b == NULL) {
+            return NGX_ERROR;
+        }
+
+        cl->next = ngx_alloc_chain_link(r->pool);
+        if (cl->next == NULL) {
+            return NGX_ERROR;
+        }
+
+        cl = cl->next;
+        cl->buf = b;
+
+        e.ip = plcf->body_values->elts;
+        e.pos = b->last;
+        e.request = r;
+        e.flushed = 1;
+        e.skip = 0;
+
+        while (*(uintptr_t *) e.ip) {
+            code = *(ngx_http_script_code_pt *) e.ip;
+            code((ngx_http_script_engine_t *) &e);
+        }
+
+        b->last = e.pos;
+        b->last_buf = 1;
+
     } else {
         u->request_bufs = cl;
 
-        if (plcf->body_values == NULL) {
-            f = (ngx_http_proxy_v2_frame_t *) headers_frame;
-            f->flags |= NGX_HTTP_V2_END_STREAM_FLAG;
-        }
+        f = (ngx_http_proxy_v2_frame_t *) headers_frame;
+        f->flags |= NGX_HTTP_V2_END_STREAM_FLAG;
+
+        b->last_buf = 1;
     }
 
     u->output.output_filter = ngx_http_proxy_v2_body_output_filter;

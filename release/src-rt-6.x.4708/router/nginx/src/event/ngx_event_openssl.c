@@ -1171,7 +1171,7 @@ ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
 static ngx_inline ngx_int_t
 ngx_ssl_cert_already_in_hash(void)
 {
-#if !(OPENSSL_VERSION_NUMBER >= 0x1010009fL \
+#if !(OPENSSL_VERSION_NUMBER >= 0x1010009fL                                   \
       || LIBRESSL_VERSION_NUMBER >= 0x3050000fL)
     u_long  error;
 
@@ -3251,7 +3251,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
          * OpenSSL 1.1.1 fails to return SSL_ERROR_SYSCALL if an error
          * happens during SSL_write() after close_notify alert from the
          * peer, and returns SSL_ERROR_ZERO_RETURN instead,
-         * https://git.openssl.org/?p=openssl.git;a=commitdiff;h=8051ab2
+         * see https://github.com/openssl/openssl/commit/8051ab2
          */
 
         sslerr = SSL_ERROR_SYSCALL;
@@ -3898,6 +3898,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_PACKET_LENGTH_TOO_LONG
             || n == SSL_R_PACKET_LENGTH_TOO_LONG                     /*  198 */
 #endif
+#ifdef SSL_R_INVALID_ALERT
+            || n == SSL_R_INVALID_ALERT                              /*  205 */
+#endif
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
 #ifdef SSL_R_TOO_MANY_WARNING_ALERTS
             || n == SSL_R_TOO_MANY_WARNING_ALERTS                    /*  220 */
@@ -3957,9 +3960,14 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_SSL3_SESSION_ID_TOO_LONG
             || n == SSL_R_SSL3_SESSION_ID_TOO_LONG                   /*  300 */
+#elif (defined SSL_R_TLS_SESSION_ID_TOO_LONG)
+            || n == SSL_R_TLS_SESSION_ID_TOO_LONG                    /*  300 */
 #endif
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
+#endif
+#ifdef SSL_R_RECORD_LAYER_FAILURE
+            || n == SSL_R_RECORD_LAYER_FAILURE                       /*  313 */
 #endif
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
             || n == SSL_R_RENEGOTIATE_EXT_TOO_LONG                   /*  335 */
@@ -3993,33 +4001,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_BAD_RECORD_TYPE
             || n == SSL_R_BAD_RECORD_TYPE                            /*  443 */
 #endif
-            || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
-#ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
-            || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE             /* 1010 */
-            || n == SSL_R_SSLV3_ALERT_BAD_RECORD_MAC                 /* 1020 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPTION_FAILED              /* 1021 */
-            || n == SSL_R_TLSV1_ALERT_RECORD_OVERFLOW                /* 1022 */
-            || n == SSL_R_SSLV3_ALERT_DECOMPRESSION_FAILURE          /* 1030 */
-            || n == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE              /* 1040 */
-            || n == SSL_R_SSLV3_ALERT_NO_CERTIFICATE                 /* 1041 */
-            || n == SSL_R_SSLV3_ALERT_BAD_CERTIFICATE                /* 1042 */
-            || n == SSL_R_SSLV3_ALERT_UNSUPPORTED_CERTIFICATE        /* 1043 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_REVOKED            /* 1044 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED            /* 1045 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_UNKNOWN            /* 1046 */
-            || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER              /* 1047 */
-            || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA                     /* 1048 */
-            || n == SSL_R_TLSV1_ALERT_ACCESS_DENIED                  /* 1049 */
-            || n == SSL_R_TLSV1_ALERT_DECODE_ERROR                   /* 1050 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPT_ERROR                  /* 1051 */
-            || n == SSL_R_TLSV1_ALERT_EXPORT_RESTRICTION             /* 1060 */
-            || n == SSL_R_TLSV1_ALERT_PROTOCOL_VERSION               /* 1070 */
-            || n == SSL_R_TLSV1_ALERT_INSUFFICIENT_SECURITY          /* 1071 */
-            || n == SSL_R_TLSV1_ALERT_INTERNAL_ERROR                 /* 1080 */
-            || n == SSL_R_TLSV1_ALERT_USER_CANCELLED                 /* 1090 */
-            || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION               /* 1100 */
-#endif
-            || n == 1121 /* SSL_R_TLSV1_ALERT_ECH_REQUIRED */
+            || (n >= SSL_AD_REASON_OFFSET                            /* 1000 */
+                && n <= SSL_AD_REASON_OFFSET + 255)
             )
         {
             switch (c->log_error) {
@@ -5682,6 +5665,104 @@ ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 #endif
 
     s->len = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_sigalgs(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+
+    int            n, i;
+    size_t         len;
+    u_char        *p;
+    const char    *name;
+    unsigned int   codepoint;
+
+    n = SSL_get0_sigalg(c->ssl->connection, -1, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = 0;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+        len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
+        len += sizeof(":") - 1;
+    }
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+
+        if (name) {
+            p = ngx_cpymem(p, name, ngx_strlen(name));
+
+        } else {
+            p = ngx_sprintf(p, "0x%04xd", codepoint);
+        }
+
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#elif defined SSL_CTRL_SET_SIGALGS
+
+    /*
+     * SSL_get_sigalgs() is only available in OpenSSL 1.0.2+,
+     * but uses a different naming, so emit raw codes
+     */
+
+    int             n, i;
+    size_t          len;
+    u_char         *p;
+    unsigned char   rsig, rhash;
+
+    n = SSL_get_sigalgs(c->ssl->connection, -1, NULL, NULL, NULL, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = n * (sizeof("0x0000") - 1 + sizeof(":") - 1);
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get_sigalgs(c->ssl->connection, i, NULL, NULL, NULL, &rsig, &rhash);
+        p = ngx_sprintf(p, "0x%04xd", rhash << 8 | rsig);
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#else
+
+    s->len = 0;
+
+#endif
+
     return NGX_OK;
 }
 

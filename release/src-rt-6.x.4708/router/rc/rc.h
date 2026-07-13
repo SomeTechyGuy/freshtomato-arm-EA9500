@@ -314,6 +314,7 @@ extern void set_tz(void);
 extern void start_ntpd(void);
 extern void stop_ntpd(void);
 extern int ntpd_synced_main(int argc, char *argv[]);
+extern int ntpd_restart_main(int argc, char *argv[]);
 extern void check_services(void);
 extern void exec_service(void);
 extern int service_main(int argc, char *argv[]);
@@ -338,7 +339,7 @@ extern void start_ipv6(void);
 extern void stop_ipv6(void);
 #endif /* TCONFIG_IPV6 */
 #ifdef TCONFIG_BCMBSD
-extern int start_bsd(void);
+extern void start_bsd(void);
 extern void stop_bsd(void);
 #endif /* TCONFIG_BCMBSD */
 #ifdef TCONFIG_MDNS

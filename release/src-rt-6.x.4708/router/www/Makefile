@@ -55,12 +55,6 @@ ifeq ($(or $(TCONFIG_BCMARM),$(TCONFIG_MIPSR2)),y)
 else
 	sed -i $(INSTALLDIR)/www/advanced-vlan.asp -e "/MIPSR2P-BEGIN/,/MIPSR2P-END/d"
 endif
-# Only include external switch options if EXTSW is enabled (RT-AC88U)
-ifneq ($(TCONFIG_EXTSW),y)
-	sed -i $(INSTALLDIR)/www/advanced-vlan.asp -e "/EXTSW-BEGIN/,/EXTSW-END/d"
-else
-	sed -i $(INSTALLDIR)/www/advanced-vlan.asp -e "/EXTSW-NO-BEGIN/,/EXTSW-NO-END/d"
-endif
 
 # Only include the CIFS pages if CIFS is configured in.
 ifneq ($(TCONFIG_CIFS),y)
@@ -138,6 +132,7 @@ ifneq ($(TCONFIG_FTP),y)
 	rm -f $(INSTALLDIR)/www/nas-ftp.asp
 	sed -i $(INSTALLDIR)/www/tomato.js -e "/FTP-BEGIN/,/FTP-END/d"
 	sed -i $(INSTALLDIR)/www/isup.jsx -e "/FTP-BEGIN/,/FTP-END/d"
+	sed -i $(INSTALLDIR)/www/isup.js -e "/FTP-BEGIN/,/FTP-END/d"
 endif
 
 # Only include the Samba pages if Samba is configured in.
@@ -260,7 +255,6 @@ ifneq ($(TCONFIG_USB),y)
 	rm -f $(INSTALLDIR)/www/wwan-sms.asp
 	sed -i $(INSTALLDIR)/www/tomato.css -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/tomato.js -e "/USB-BEGIN/,/USB-END/d"
-	sed -i $(INSTALLDIR)/www/status-overview.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/admin-buttons.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/admin-access.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/about.asp -e "/USB-BEGIN/,/USB-END/d"
@@ -275,7 +269,6 @@ ifeq ($(TCONFIG_REMOVE_USBAPP),y)
 	rm -f $(INSTALLDIR)/www/wwan-sms.asp
 	sed -i $(INSTALLDIR)/www/tomato.css -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/tomato.js -e "/USB-BEGIN/,/USB-END/d"
-	sed -i $(INSTALLDIR)/www/status-overview.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/admin-buttons.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/admin-access.asp -e "/USB-BEGIN/,/USB-END/d"
 	sed -i $(INSTALLDIR)/www/about.asp -e "/USB-BEGIN/,/USB-END/d"
@@ -385,6 +378,7 @@ else
 	sed -i $(INSTALLDIR)/www/about.asp -e "/PPTPD-BEGIN/,/PPTPD-END/d"
 	sed -i $(INSTALLDIR)/www/advanced-dhcpdns.asp -e "/PPTPD-BEGIN/,/PPTPD-END/d"
 	sed -i $(INSTALLDIR)/www/isup.jsx -e "/PPTPD-BEGIN/,/PPTPD-END/d"
+	sed -i $(INSTALLDIR)/www/isup.js -e "/PPTPD-BEGIN/,/PPTPD-END/d"
 endif
 
 # Only include the nfs pages if NFS is compiled in
@@ -574,7 +568,7 @@ ifneq ($(TCONFIG_BCMARM),y)
 endif
 
 # only include isup.js helper if it is needed
-ifeq ($(TCONFIG_FTP)$(TCONFIG_SAMBASRV)$(TCONFIG_MEDIA_SERVER)$(TCONFIG_PPTPD)$(TCONFIG_NGINX)$(TCONFIG_BT),)
+ifeq ($(TCONFIG_FTP)$(TCONFIG_SAMBASRV)$(TCONFIG_MEDIA_SERVER)$(TCONFIG_PPTPD)$(TCONFIG_NGINX)$(TCONFIG_BT)$(TCONFIG_TOR),)
 	rm -f $(INSTALLDIR)/www/isup.js
 endif
 
@@ -718,8 +712,6 @@ endif
 		-e "/WIREGUARD-BEGIN/d"	-e "/WIREGUARD-END/d" \
 		-e "/DDNS4CLS-BEGIN/d"	-e "/DDNS4CLS-END/d" \
 		-e "/DDNS2CLS-BEGIN/d"	-e "/DDNS2CLS-END/d" \
-		-e "/EXTSW-BEGIN/d"	-e "/EXTSW-END/d" \
-		-e "/EXTSW-NO-BEGIN/d"	-e "/EXTSW-NO-END/d" \
 		-e "/USBAP-BEGIN/d"	-e "/USBAP-END/d" \
 		-e "/MIPSR2P-BEGIN/d"	-e "/MIPSR2P-END/d" \
 		-e "/MIPSR2P-NO-BEGIN/d" -e "/MIPSR2P-NO-END/d" \

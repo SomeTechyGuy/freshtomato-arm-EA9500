@@ -41,6 +41,7 @@ static void log6_packet(struct state *state, char *type, struct in6_addr *addr, 
 static void log6_quiet(struct state *state, char *type, struct in6_addr *addr, char *string);
 static void *opt6_find (uint8_t *opts, uint8_t *end, unsigned int search, int minsize);
 static void *opt6_first(uint8_t *opt, uint8_t *end);
+static void *opt6_user_vendor_first(uint8_t *opt, uint8_t *end);
 static unsigned int opt6_uint(unsigned char *opt, int offset, int size);
 static void get_context_tag(struct state *state, struct dhcp_context *context);
 static int check_ia(struct state *state, void *opt, void **endp, void **ia_option);
@@ -65,9 +66,9 @@ static void calculate_times(struct dhcp_context *context, unsigned int *min_time
 #define opt6_next(opt, end) (opt6_first(opt6_ptr((opt), opt6_len((opt))), (end)))
 
 #define opt6_user_vendor_ptr(opt, i) ((void *)&(((uint8_t *)(opt))[2+(i)]))
-#define opt6_user_vendor_len(opt) ((int)(opt6_uint(opt, -4, 2)))
-#define opt6_user_vendor_next(opt, end) (opt6_next(((uint8_t *) opt) - 2, end))
- 
+#define opt6_user_vendor_len(opt) ((int)(opt6_uint((opt), -4, 2)))
+#define opt6_user_vendor_next(opt, end) (opt6_user_vendor_first(opt6_user_vendor_ptr((opt), opt6_user_vendor_len((opt))), (end)))
+
 
 unsigned short dhcp6_reply(struct dhcp_context *context, int multicast_dest, int interface, char *iface_name,
 			   struct in6_addr *fallback,  struct in6_addr *ll_addr, struct in6_addr *ula_addr,
@@ -414,7 +415,8 @@ static int dhcp6_no_relay(struct state *state, int msg_type, unsigned char *inbu
 	    }
 
        	  /* Note that format if user/vendor classes is different to DHCP options - no option types. */
-	  for (enc_opt = opt6_ptr(opt, offset); enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
+	  for (enc_opt = opt6_user_vendor_first(opt6_ptr(opt, offset), enc_end);
+	       enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
 	    for (i = 0; i <= (opt6_user_vendor_len(enc_opt) - vendor->len); i++)
 	      if (memcmp(vendor->data, opt6_user_vendor_ptr(enc_opt, i), vendor->len) == 0)
 		{
@@ -472,10 +474,8 @@ static int dhcp6_no_relay(struct state *state, int msg_type, unsigned char *inbu
   if (state->mac_len != 0)
     {
       if (option_bool(OPT_LOG_OPTS))
-	{
-	  print_mac(daemon->dhcp_buff, state->mac, state->mac_len);
-	  my_syslog(MS_DHCP | LOG_INFO, _("%u client MAC address: %s"), state->xid, daemon->dhcp_buff);
-	}
+	my_syslog(MS_DHCP | LOG_INFO, _("%u client MAC address: %s"), state->xid,
+		  print_mac(state->mac, state->mac_len));
 
       for (mac_opt = daemon->dhcp_macs; mac_opt; mac_opt = mac_opt->next)
 	if ((unsigned)mac_opt->hwaddr_len == state->mac_len &&
@@ -1534,7 +1534,7 @@ static struct dhcp_netid *add_options(struct state *state, int do_refresh)
       for (i = 0; i <  opt6_len(oro) - 1; i += 2)
 	{
 	  char *s = option_string(AF_INET6, opt6_uint(oro, i, 2), NULL, 0, NULL, 0);
-	  q += snprintf(q, MAXDNAME - (q - daemon->namebuff),
+	  q += snprintf(q, MAXDNAMESTR - (q - daemon->namebuff),
 			"%d%s%s%s", 
 			opt6_uint(oro, i, 2),
 			strlen(s) != 0 ? ":" : "",
@@ -1927,7 +1927,8 @@ static void update_leases(struct state *state, struct dhcp_context *context, str
 	      lease_add_extradata(lease, (unsigned char *)daemon->dhcp_buff2, strlen(daemon->dhcp_buff2), 0);
 	      
 	      if (opt6_len(opt) >= 6) 
-		for (enc_opt = opt6_ptr(opt, 4); enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
+		for (enc_opt = opt6_user_vendor_first(opt6_ptr(opt, 4), enc_end);
+		     enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
 		  {
 		    lease->vendorclass_count++;
 		    lease_add_extradata(lease, opt6_user_vendor_ptr(enc_opt, 0), opt6_user_vendor_len(enc_opt), 0);
@@ -1987,7 +1988,8 @@ static void update_leases(struct state *state, struct dhcp_context *context, str
 	  if ((opt = opt6_find(state->packet_options, state->end, OPTION6_USER_CLASS, 2)))
 	    {
 	      void *enc_opt, *enc_end = opt6_ptr(opt, opt6_len(opt));
-	      for (enc_opt = opt6_ptr(opt, 0); enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
+	      for (enc_opt = opt6_user_vendor_first(opt6_ptr(opt, 0), enc_end);
+		   enc_opt; enc_opt = opt6_user_vendor_next(enc_opt, enc_end))
 		lease_add_extradata(lease, opt6_user_vendor_ptr(enc_opt, 0), opt6_user_vendor_len(enc_opt), 0);
 	    }
 	}
@@ -2043,8 +2045,8 @@ static void log6_opts(int nest, unsigned int xid, void *start_opts, void *end_op
 	    {
 	      int slen = opt6_len(opt) - 2;
 	      int len = sprintf(daemon->namebuff, "%u ", opt6_uint(opt, 0, 2));
-	      if (slen > (MAXDNAME * 2) - len - 1)
-		slen = (MAXDNAME * 2) - len - 1;
+	      if (slen > (MAXDNAMESTR) - len - 1)
+		slen = (MAXDNAMESTR) - len - 1;
 	      memcpy(daemon->namebuff + len, opt6_ptr(opt, 2), slen);
 	      daemon->namebuff[len + slen] = 0;
 	    }
@@ -2054,7 +2056,7 @@ static void log6_opts(int nest, unsigned int xid, void *start_opts, void *end_op
 	{
 	  /* account for flag byte on FQDN */
 	  int offset = type == OPTION6_FQDN ? 1 : 0;
-	  optname = option_string(AF_INET6, type, opt6_ptr(opt, offset), opt6_len(opt) - offset, daemon->namebuff, MAXDNAME);
+	  optname = option_string(AF_INET6, type, opt6_ptr(opt, offset), opt6_len(opt) - offset, daemon->namebuff, MAXDNAMESTR);
 	}
       
       my_syslog(MS_DHCP | LOG_INFO, "%u %s size:%3d option:%3d %s  %s", 
@@ -2073,14 +2075,6 @@ static void log6_quiet(struct state *state, char *type, struct in6_addr *addr, c
 
 static void log6_packet(struct state *state, char *type, struct in6_addr *addr, char *string)
 {
-  int clid_len = state->clid_len;
-
-  /* avoid buffer overflow */
-  if (clid_len > 100)
-    clid_len = 100;
-  
-  print_mac(daemon->namebuff, state->clid, clid_len);
-
   if (addr)
     {
       inet_ntop(AF_INET6, addr, daemon->dhcp_buff2, DHCP_BUFF_SZ - 1);
@@ -2095,14 +2089,14 @@ static void log6_packet(struct state *state, char *type, struct in6_addr *addr, 
 	      type,
 	      state->iface_name, 
 	      daemon->dhcp_buff2,
-	      daemon->namebuff,
+	      print_mac(state->clid, state->clid_len),
 	      string ? string : "");
   else
     my_syslog(MS_DHCP | LOG_INFO, "%s(%s) %s%s %s",
 	      type,
 	      state->iface_name, 
 	      daemon->dhcp_buff2,
-	      daemon->namebuff,
+	      print_mac(state->clid, state->clid_len),
 	      string ? string : "");
 }
 
@@ -2130,7 +2124,23 @@ static void *opt6_first(uint8_t *opt, uint8_t *end)
 
   return opt;
 }
-  
+
+static void *opt6_user_vendor_first(uint8_t *opt, uint8_t *end)
+{
+  if (!opt)
+    return NULL;
+
+  /* make sure we have length. */
+  if ((uint8_t *)opt6_user_vendor_ptr(opt, 0) > end)
+    return NULL;
+
+  /* make sure we have bytes promised by length. */
+  if ((uint8_t *)opt6_user_vendor_ptr(opt, opt6_user_vendor_len(opt)) > end)
+    return NULL;
+
+  return opt;
+}
+
 static unsigned int opt6_uint(unsigned char *opt, int offset, int size)
 {
   /* this worries about unaligned data and byte order */
@@ -2144,12 +2154,12 @@ static unsigned int opt6_uint(unsigned char *opt, int offset, int size)
   return ret;
 } 
 
+/* return 0 if we're not configured to relay. */
 int relay_upstream6(int iface_index, ssize_t sz, 
 		    struct in6_addr *peer_address, u32 scope_id, time_t now)
 {
   unsigned char *header;
   unsigned char *inbuff = daemon->dhcp_packet.iov_base;
-  int msg_type = *inbuff;
   int hopcount, o;
   struct in6_addr multicast;
   unsigned int maclen, mactype;
@@ -2166,10 +2176,22 @@ int relay_upstream6(int iface_index, ssize_t sz,
   
   inet_pton(AF_INET6, ALL_SERVERS, &multicast);
   get_client_mac(peer_address, scope_id, mac, &maclen, &mactype, now);
+
+  /* We need at least four bytes for valid client/server message
+     (type, and transaction ID) A relay-originated message needs more. */
+  if (sz < 4)
+    return 1;
   
-  /* Get hop count from nested relayed message */ 
-  if (msg_type == DHCP6RELAYFORW)
-    hopcount = *((unsigned char *)inbuff+1) + 1;
+  if (inbuff[0] == DHCP6RELAYFORW)
+    {
+      /* must have at least msg_type+hopcount+link_address+peer_address+minimal size option
+	 which is               1   +    1   +    16      +     16     + 2 + 2 = 38 */
+      if (sz < 38)
+	return 1;
+      
+      /* Get hop count from nested relayed message. */
+      hopcount = inbuff[1] + 1;
+    }
   else
     hopcount = 0;
 
@@ -2235,7 +2257,7 @@ int relay_upstream6(int iface_index, ssize_t sz,
 	  {
 	    inet_ntop(AF_INET6, &relay->local, daemon->addrbuff, ADDRSTRLEN);
 	    if (IN6_ARE_ADDR_EQUAL(&relay->server.addr6, &multicast))
-	      snprintf(daemon->namebuff, MAXDNAME, _("multicast via %s"), relay->interface);
+	      snprintf(daemon->namebuff, MAXDNAMESTR, _("multicast via %s"), relay->interface);
 	    else
 	      inet_ntop(AF_INET6, &relay->server, daemon->namebuff, ADDRSTRLEN);
 	    my_syslog(MS_DHCP | LOG_INFO, _("DHCP relay at %s -> %s"), daemon->addrbuff, daemon->namebuff);
