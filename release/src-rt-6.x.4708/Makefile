@@ -473,10 +473,6 @@ define RouterOptions
 		sed -i "/TCONFIG_NVRAM_128K/d" $(1); \
 	 	echo "TCONFIG_NVRAM_128K=y" >>$(1); \
 	fi; \
-	if [ "$(NVRAM_1536K)" = "y" ]; then \
-        sed -i "/TCONFIG_NVRAM_1536K/d" $(1); \
-        echo "TCONFIG_NVRAM_1536K=y" >>$(1); \
-	fi; \
 	if [ "$(DRAM_512M)" = "y" ]; then \
 		sed -i "/TCONFIG_DRAM_512M/d" $(1); \
 	 	echo "TCONFIG_DRAM_512M=y" >>$(1); \
