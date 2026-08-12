@@ -25,14 +25,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('docker/Dockerfile', 'docker/nss_wrapper') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -42,19 +34,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Clean stale build artifacts
-        run: |
-          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config
-          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config.old
-          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config.cmd
-          find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.cmd" -delete
-          find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.o" -delete
- 
-      - name: Fix SDK6 Symlink for SDK7 Build
-        run: |
-          ln -sfn ../../src-rt-6.x.4708 release/src-rt-7.14.114.x/src/src-rt-6.x.4708
-          ls -l release/src-rt-7.14.114.x/src/src-rt-6.x.4708
 
       - name: Build ea9400-128e firmware
         run: |
@@ -74,4 +53,4 @@ jobs:
             release/src-rt-7.14.114.x/src/image/*.trx
             release/src-rt-7.14.114.x/src/image/*.bin
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 30
