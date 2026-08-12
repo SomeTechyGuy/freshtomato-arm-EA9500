@@ -50,6 +50,11 @@ jobs:
           rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config.cmd
           find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.cmd" -delete
           find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.o" -delete
+ 
+      - name: Fix SDK6 Symlink for SDK7 Build
+        run: |
+          ln -sfn ../../src-rt-6.x.4708 release/src-rt-7.14.114.x/src/src-rt-6.x.4708
+          ls -l release/src-rt-7.14.114.x/src/src-rt-6.x.4708
 
       - name: Build ea9400-128e firmware
         run: |
