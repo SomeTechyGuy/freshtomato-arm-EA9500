@@ -72,6 +72,7 @@ RUN apt-get update \
   bsdmainutils \
   autoconf-archive \
   libltdl-dev \
+  ccache \
   && dpkg --add-architecture i386 \
   && apt-get update \
   && apt-get install --no-install-suggests --no-install-recommends -y \
@@ -81,6 +82,14 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY nss_wrapper /usr/bin/
+
+ENV CCACHE_DIR=/ws/.ccache
+ENV CCACHE_MAXSIZE=5G
+
+RUN ln -s /usr/bin/ccache /usr/local/bin/gcc && \
+    ln -s /usr/bin/ccache /usr/local/bin/g++ && \
+    ln -s /usr/bin/ccache /usr/local/bin/cc && \
+    ln -s /usr/bin/ccache /usr/local/bin/c++
 
 # Map user and dont run as root
 USER 65534

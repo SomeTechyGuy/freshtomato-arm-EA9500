@@ -11,6 +11,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
       - name: Ensure nss_wrapper is executable
         run: chmod +x docker/nss_wrapper
@@ -37,8 +40,8 @@ jobs:
           file: ./docker/Dockerfile
           load: true
           tags: ${{ steps.meta.outputs.tag }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Rotate build cache
         run: |
@@ -57,6 +60,8 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/ws \
+            -v "${{ github.workspace }}/.ccache":/ws/.ccache \
+            -e CCACHE_DIR=/ws/.ccache \
             --user "$(id -u):$(id -g)" \
             ${{ steps.meta.outputs.tag }} \
             make -C /ws/release/src-rt-7.14.114.x/src ea9400-128e
@@ -69,4 +74,4 @@ jobs:
             release/src-rt-7.14.114.x/src/image/*.trx
             release/src-rt-7.14.114.x/src/image/*.bin
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
