@@ -53,4 +53,4 @@ jobs:
             release/src-rt-7.14.114.x/src/image/*.trx
             release/src-rt-7.14.114.x/src/image/*.bin
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
