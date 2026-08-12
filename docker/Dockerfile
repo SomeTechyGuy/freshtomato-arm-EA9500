@@ -84,7 +84,7 @@ RUN apt-get update \
 COPY nss_wrapper /usr/bin/
 
 ENV CCACHE_DIR=/ws/.ccache
-ENV CCACHE_MAXSIZE=5G
+ENV CCACHE_MAXSIZE=5GB
 
 RUN ln -s /usr/bin/ccache /usr/local/bin/gcc && \
     ln -s /usr/bin/ccache /usr/local/bin/g++ && \
