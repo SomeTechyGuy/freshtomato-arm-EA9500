@@ -186,7 +186,6 @@ const struct usbi_os_backend usbi_backend = {
 	/*.exit =*/ haiku_exit,
 	/*.set_option =*/ NULL,
 	/*.get_device_list =*/ NULL,
-	/*.get_device_string =*/ NULL,
 	/*.hotplug_poll =*/ NULL,
 	/*.wrap_sys_device =*/ NULL,
 	/*.open =*/ haiku_open,
@@ -215,9 +214,6 @@ const struct usbi_os_backend usbi_backend = {
 	/*.kernel_driver_active =*/ NULL,
 	/*.detach_kernel_driver =*/ NULL,
 	/*.attach_kernel_driver =*/ NULL,
-	/*.endpoint_supports_raw_io =*/ NULL,
-	/*.endpoint_set_raw_io =*/ NULL,
-	/*.get_max_raw_io_transfer_size =*/ NULL,
 
 	/*.destroy_device =*/ NULL,
 

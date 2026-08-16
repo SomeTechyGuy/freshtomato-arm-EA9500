@@ -84,14 +84,14 @@ static CURLcode test_unit3301(const char *arg)
   struct curl_thrdq *tqueue;
   struct unit3301_ctx ctx;
   int i, count, nrecvd;
-  CURLcode result;
+  CURLcode r;
 
   /* create and teardown queue */
   memset(&ctx, 0, sizeof(ctx));
-  result = Curl_thrdq_create(&tqueue, "unit3301-a", 0, 0, 2, 1,
-                             unit3301_item_free, unit3301_process,
-                             unit3301_event, &ctx);
-  fail_unless(!result, "queue-a create");
+  r = Curl_thrdq_create(&tqueue, "unit3301-a", 0, 0, 2, 1,
+                        unit3301_item_free, unit3301_process, unit3301_event,
+                        &ctx);
+  fail_unless(!r, "queue-a create");
   Curl_thrdq_destroy(tqueue, TRUE);
   tqueue = NULL;
   fail_unless(!ctx.event, "queue-a unexpected done count");
@@ -99,25 +99,25 @@ static CURLcode test_unit3301(const char *arg)
   /* create queue, have it process `count` items */
   count = 10;
   memset(&ctx, 0, sizeof(ctx));
-  result = Curl_thrdq_create(&tqueue, "unit3301-b", 0, 0, 2, 1,
-                             unit3301_item_free, unit3301_process,
-                             unit3301_event, &ctx);
-  fail_unless(!result, "queue-b create");
+  r = Curl_thrdq_create(&tqueue, "unit3301-b", 0, 0, 2, 1,
+                        unit3301_item_free, unit3301_process, unit3301_event,
+                        &ctx);
+  fail_unless(!r, "queue-b create");
   for(i = 0; i < count; ++i) {
     struct unit3301_item *uitem = unit3301_item_create(i);
     fail_unless(uitem, "queue-b item create");
-    result = Curl_thrdq_send(tqueue, uitem, NULL, 0);
-    fail_unless(!result, "queue-b send");
+    r = Curl_thrdq_send(tqueue, uitem, NULL, 0);
+    fail_unless(!r, "queue-b send");
   }
 
-  result = thrdq_await_done(tqueue, 0);
-  fail_unless(!result, "queue-b await done");
+  r = Curl_thrdq_await_done(tqueue, 0);
+  fail_unless(!r, "queue-b await done");
 
   nrecvd = 0;
   for(i = 0; i < count; ++i) {
     void *item;
-    result = Curl_thrdq_recv(tqueue, &item);
-    fail_unless(!result, "queue-b recv");
+    r = Curl_thrdq_recv(tqueue, &item);
+    fail_unless(!r, "queue-b recv");
     if(item) {
       struct unit3301_item *uitem = item;
       curl_mfprintf(stderr, "received item %d\n", uitem->id);
@@ -134,9 +134,11 @@ static CURLcode test_unit3301(const char *arg)
 }
 
 #else
+
 static CURLcode test_unit3301(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
+  (void)arg;
   UNITTEST_END_SIMPLE
 }
 #endif /* USE_THREADS */

@@ -5,7 +5,6 @@
 HTTP
 -G
 --proto-default
---resolve
 </keywords>
 </info>
 

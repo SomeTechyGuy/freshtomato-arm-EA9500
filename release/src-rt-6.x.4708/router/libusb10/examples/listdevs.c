@@ -18,16 +18,14 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 
 #include "libusb.h"
 
-static void print_devs(libusb_device **devs, int verbose)
+static void print_devs(libusb_device **devs)
 {
 	libusb_device *dev;
 	int i = 0, j = 0;
 	uint8_t path[8]; 
-	char string_buffer[LIBUSB_DEVICE_STRING_BYTES_MAX];
 
 	while ((dev = devs[i++]) != NULL) {
 		struct libusb_device_descriptor desc;
@@ -47,51 +45,15 @@ static void print_devs(libusb_device **devs, int verbose)
 			for (j = 1; j < r; j++)
 				printf(".%d", path[j]);
 		}
-
-		if (verbose) {
-			r = libusb_get_device_string(dev, LIBUSB_DEVICE_STRING_MANUFACTURER,
-				string_buffer, sizeof(string_buffer));
-			if (r >= 0) {
-				printf("\n    manufacturer = %s", string_buffer);
-			}
-
-			r = libusb_get_device_string(dev, LIBUSB_DEVICE_STRING_PRODUCT,
-				string_buffer, sizeof(string_buffer));
-			if (r >= 0) {
-				printf("\n    product = %s", string_buffer);
-			}
-
-			r = libusb_get_device_string(dev, LIBUSB_DEVICE_STRING_SERIAL_NUMBER,
-				string_buffer, sizeof(string_buffer));
-			if (r >= 0) {
-				printf("\n    serial_number = %s", string_buffer);
-			}
-		}
 		printf("\n");
 	}
 }
 
-static int usage(void) {
-	printf("usage: listdevs [--verbose]\n");
-	return 1;
-}
-
-int main(int argc, char *argv[])
+int main(void)
 {
-	int verbose = 0;
 	libusb_device **devs;
 	int r;
 	ssize_t cnt;
-
-	--argc; ++argv;  /* consume argument */
-	while (argc) {
-		if ((0 == strcmp("-v", argv[0])) || (0 == strcmp("--verbose", argv[0]))) {
-			++verbose;
-			--argc; ++argv;  /* consume argument */
-		} else {
-			return usage();
-		}
-	}
 
 	r = libusb_init_context(/*ctx=*/NULL, /*options=*/NULL, /*num_options=*/0);
 	if (r < 0)
@@ -103,7 +65,7 @@ int main(int argc, char *argv[])
 		return (int) cnt;
 	}
 
-	print_devs(devs, verbose);
+	print_devs(devs);
 	libusb_free_device_list(devs, 1);
 
 	libusb_exit(NULL);

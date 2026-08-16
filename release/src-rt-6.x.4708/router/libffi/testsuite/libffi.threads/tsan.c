@@ -8,7 +8,7 @@
 
 #define NUM_THREADS 20
 
-#if defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
+#ifdef _POSIX_BARRIERS
 pthread_barrier_t barrier;
 #endif
 
@@ -21,7 +21,7 @@ void callback(ffi_cif *cif __UNUSED__, void *ret, void **args, void *userdata __
 }
 
 void *thread_func(void *arg) {
-#if defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
+#ifdef _POSIX_BARRIERS
     pthread_barrier_wait(&barrier);
 #endif
 
@@ -50,7 +50,7 @@ void *thread_func(void *arg) {
 int main() {
     pthread_t threads[NUM_THREADS];
 
-#if defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
+#ifdef _POSIX_BARRIERS
     pthread_barrier_init(&barrier, NULL, NUM_THREADS);
 #endif
 
@@ -65,7 +65,7 @@ int main() {
         pthread_join(threads[i], NULL);
     }
 
-#if defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
+#ifdef _POSIX_BARRIERS
     pthread_barrier_destroy(&barrier);
 #endif
 

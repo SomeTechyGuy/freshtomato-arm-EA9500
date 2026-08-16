@@ -58,12 +58,12 @@ static int add_json_object(json_object *obj)
 
 static int add_json_array(struct array_list *a)
 {
-	char seq[21];
-	size_t i, len;
+	char seq[12];
+	int i, len;
 	int ret;
 
 	for (i = 0, len = array_list_length(a); i < len; i++) {
-		snprintf(seq, sizeof(seq), "%zu", i);
+		snprintf(seq, sizeof(seq), "%d", i);
 		ret = add_json_element(seq, array_list_get_idx(a, i));
 		if (ret)
 			return ret;
@@ -338,7 +338,6 @@ static int jshn_parse_file(const char *path)
 	struct stat sb;
 	int ret = 0;
 	char *fbuf;
-	ssize_t n;
 	int fd;
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
@@ -352,20 +351,13 @@ static int jshn_parse_file(const char *path)
 		return 3;
 	}
 
-	if (sb.st_size < 0 || (uintmax_t)sb.st_size >= SIZE_MAX) {
-		fprintf(stderr, "File %s has invalid size\n", path);
-		close(fd);
-		return 3;
-	}
-
-	if (!(fbuf = calloc(1, (size_t)sb.st_size + 1))) {
+	if (!(fbuf = calloc(1, sb.st_size+1))) {
 		fprintf(stderr, "Error allocating memory for %s\n", path);
 		close(fd);
 		return 3;
 	}
 
-	n = read(fd, fbuf, (size_t)sb.st_size);
-	if (n < 0 || n != sb.st_size) {
+	if (read(fd, fbuf, sb.st_size) != sb.st_size) {
 		fprintf(stderr, "Error reading %s\n", path);
 		free(fbuf);
 		close(fd);

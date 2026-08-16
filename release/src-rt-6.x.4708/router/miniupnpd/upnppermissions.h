@@ -1,7 +1,7 @@
 /* $Id: upnppermissions.h,v 1.14 2023/02/11 23:02:17 nanard Exp $ */
 /* MiniUPnP project
  * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
- * (c) 2006-2026 Thomas Bernard
+ * (c) 2006-2023 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -43,7 +43,7 @@ struct upnpperm {
  *  deny 0-65535 0.0.0.0/0 0-65535 */
 int
 read_permission_line(struct upnpperm * perm,
-                     const char * p);
+                     char * p);
 
 void
 free_permission_line(struct upnpperm * perm);
@@ -72,3 +72,4 @@ write_permlist(int fd, const struct upnpperm * permary,
 #endif
 
 #endif
+

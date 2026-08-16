@@ -36,12 +36,9 @@ void start_pptpc(void)
 	char *argv[5];
 	int argc = 0;
 
+	struct in_addr *addr;
 	struct addrinfo hints;
-	struct addrinfo *res = NULL;
-	struct sockaddr_in *ipv;
-	struct in_addr addr;
-	char srv_ip[INET_ADDRSTRLEN];
-	int gai;
+	struct addrinfo *res;
 
 	char *srv_addr = nvram_safe_get("pptpc_srvip");
 
@@ -68,28 +65,24 @@ void start_pptpc(void)
 	}
 
 	/* Get IP from hostname */
-	if (inet_pton(AF_INET, srv_addr, &addr) != 1) {
+	if (inet_addr(srv_addr) == INADDR_NONE) {
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family   = AF_INET; /* TODO: IPv6 support(?) */
 		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags    = AI_PASSIVE;
 
-		gai = getaddrinfo(srv_addr, NULL, &hints, &res);
-		if ((gai != 0) || (res == NULL) || (res->ai_addr == NULL)) {
-			if (res != NULL)
-				freeaddrinfo(res);
-
+		if (getaddrinfo(srv_addr, NULL, &hints, &res) != 0) {
 			logmsg(LOG_WARNING, "Can't get server IP ...");
 			return;
 		}
-
-		ipv = (struct sockaddr_in *)res->ai_addr;
-		if (inet_ntop(AF_INET, &ipv->sin_addr, srv_ip, sizeof(srv_ip)) == NULL) {
+		struct sockaddr_in *ipv = (struct sockaddr_in *)res->ai_addr;
+		addr = &(ipv->sin_addr);
+		if (inet_ntop(res->ai_family, addr, srv_addr, sizeof(srv_addr)) == NULL) {
 			freeaddrinfo(res);
 			logmsg(LOG_WARNING, "Can't get server IP ...");
 			return;
 		}
 		freeaddrinfo(res);
-		srv_addr = srv_ip;
 	}
 
 	/* Generate ppp options */

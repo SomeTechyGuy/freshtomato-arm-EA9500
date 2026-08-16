@@ -30,7 +30,7 @@ bool blobmsg_add_object(struct blob_buf *b, json_object *obj)
 
 static bool blobmsg_add_array(struct blob_buf *b, struct array_list *a)
 {
-	size_t i, len;
+	int i, len;
 
 	for (i = 0, len = array_list_length(a); i < len; i++) {
 		if (!blobmsg_add_json_element(b, NULL, array_list_get_idx(a, i)))
@@ -112,8 +112,8 @@ bool blobmsg_add_json_from_string(struct blob_buf *b, const char *str)
 
 
 struct strbuf {
-	size_t len;
-	size_t pos;
+	int len;
+	int pos;
 	char *buf;
 
 	blobmsg_json_format_t custom_format;
@@ -122,28 +122,16 @@ struct strbuf {
 	int indent_level;
 };
 
-/*
- * Minimum and growth slack for the JSON strbuf. The minimum size
- * keeps malloc(0) out of setup_strbuf() and is large enough to hold
- * any short scalar serialisation ("null", "true", "false", small
- * numbers) without an immediate realloc. The same value is added on
- * each grow in blobmsg_puts() so that successive small writes are
- * amortised across a few extra bytes per realloc.
- */
-#define STRBUF_MIN_SIZE 16
-
-static bool blobmsg_puts(struct strbuf *s, const char *c, size_t len)
+static bool blobmsg_puts(struct strbuf *s, const char *c, int len)
 {
 	size_t new_len;
 	char *new_buf;
 
-	if (!len)
+	if (len <= 0)
 		return true;
 
-	if (s->len - s->pos <= len) {
-		if (len > SIZE_MAX - STRBUF_MIN_SIZE - s->len)
-			return false;
-		new_len = s->len + STRBUF_MIN_SIZE + len;
+	if (s->pos + len >= s->len) {
+		new_len = s->len + 16 + len;
 		new_buf = realloc(s->buf, new_len);
 		if (!new_buf)
 			return false;
@@ -182,7 +170,7 @@ static void blobmsg_format_string(struct strbuf *s, const char *str)
 	blobmsg_puts(s, "\"", 1);
 	for (p = (unsigned char *) str, last = p; *p; p++) {
 		char escape = '\0';
-		size_t len;
+		int len;
 
 		switch(*p) {
 		case '\b':
@@ -228,14 +216,14 @@ static void blobmsg_format_string(struct strbuf *s, const char *str)
 	blobmsg_puts(s, "\"", 1);
 }
 
-static void blobmsg_format_json_list(struct strbuf *s, struct blob_attr *attr, size_t len, bool array);
+static void blobmsg_format_json_list(struct strbuf *s, struct blob_attr *attr, int len, bool array);
 
 static void blobmsg_format_element(struct strbuf *s, struct blob_attr *attr, bool without_name, bool head)
 {
 	const char *data_str;
 	char buf[317];
 	void *data;
-	size_t len;
+	int len;
 
 	if (!blobmsg_check_attr(attr, false))
 		return;
@@ -272,7 +260,7 @@ static void blobmsg_format_element(struct strbuf *s, struct blob_attr *attr, boo
 		snprintf(buf, sizeof(buf), "%" PRId64, (int64_t) be64_to_cpu(*(uint64_t *)data));
 		break;
 	case BLOBMSG_TYPE_DOUBLE:
-		snprintf(buf, sizeof(buf), "%.17g", blobmsg_get_double(attr));
+		snprintf(buf, sizeof(buf), "%lf", blobmsg_get_double(attr));
 		break;
 	case BLOBMSG_TYPE_STRING:
 		blobmsg_format_string(s, data);
@@ -289,7 +277,7 @@ out:
 	blobmsg_puts(s, data_str, strlen(data_str));
 }
 
-static void blobmsg_format_json_list(struct strbuf *s, struct blob_attr *attr, size_t len, bool array)
+static void blobmsg_format_json_list(struct strbuf *s, struct blob_attr *attr, int len, bool array)
 {
 	struct blob_attr *pos;
 	bool first = true;
@@ -315,8 +303,6 @@ static void blobmsg_format_json_list(struct strbuf *s, struct blob_attr *attr, s
 static void setup_strbuf(struct strbuf *s, struct blob_attr *attr, blobmsg_json_format_t cb, void *priv, int indent)
 {
 	s->len = blob_len(attr);
-	if (s->len < STRBUF_MIN_SIZE)
-		s->len = STRBUF_MIN_SIZE;
 	s->buf = malloc(s->len);
 	s->pos = 0;
 	s->custom_format = cb;
@@ -347,7 +333,7 @@ char *blobmsg_format_json_with_cb(struct blob_attr *attr, bool list, blobmsg_jso
 	else
 		blobmsg_format_element(&s, attr, false, false);
 
-	if (!s.pos) {
+	if (!s.len) {
 		free(s.buf);
 		return NULL;
 	}
@@ -374,7 +360,7 @@ char *blobmsg_format_json_value_with_cb(struct blob_attr *attr, blobmsg_json_for
 
 	blobmsg_format_element(&s, attr, true, false);
 
-	if (!s.pos) {
+	if (!s.len) {
 		free(s.buf);
 		return NULL;
 	}

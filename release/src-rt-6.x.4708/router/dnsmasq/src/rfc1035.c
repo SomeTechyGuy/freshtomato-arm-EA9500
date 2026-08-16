@@ -106,16 +106,11 @@ int extract_name(struct dns_header *header, size_t plen, unsigned char **pp,
 	  
 	  p = l + (unsigned char *)header;
 	}
-      else if (label_type == 0x00) /* label_type = 0 -> label. */
-	{
-	  /* reject wire-format names > MAXDNAME bytes
-	     This also ensures that internal-format
-	     names don't exceed MAXDNAMESTR characters. */
-	  namelen += l + 1; 
-	  /* namelen == MAXDNAME means terminator will overflow. */
+      else if (label_type == 0x00)
+	{ /* label_type = 0 -> label. */
+	  namelen += l + 1; /* include period */
 	  if (namelen >= MAXDNAME)
 	    return 0;
-
 	  if (!CHECK_LEN(header, p, plen, l))
 	    return 0;
 	  
@@ -124,13 +119,13 @@ int extract_name(struct dns_header *header, size_t plen, unsigned char **pp,
 	      {
 		unsigned char c = *p;
 
-		if (IS_NAME_ESCAPE(c))
+		if (c == 0 || c == '.' || c == NAME_ESCAPE)
 		  {
 		    *cp++ = NAME_ESCAPE;
 		    *cp++ = c+1;
 		  }
 		else
-		  *cp++ = c;
+		  *cp++ = c; 
 	      }
 	    else if (flip)
 	      {
@@ -448,7 +443,7 @@ int private_net6(struct in6_addr *a, int ban_localhost)
     (IN6_IS_ADDR_LOOPBACK(a) && ban_localhost) ||    /* RFC 6303 4.3 */
     IN6_IS_ADDR_LINKLOCAL(a) ||   /* RFC 6303 4.5 */
     IN6_IS_ADDR_SITELOCAL(a) ||
-    (((unsigned char *)a)[0] & 0xfe) == 0xfc || /* RFC 4196 3.1 */
+    ((unsigned char *)a)[0] == 0xfd ||   /* RFC 6303 4.4 */
     ((u32 *)a)[0] == htonl(0x20010db8); /* RFC 6303 4.6 */
 }
 
@@ -503,7 +498,7 @@ int do_doctor(struct dns_header *header, size_t qlen, char *namebuff)
 	      header->hb3 &= ~HB3_AA;
 #ifdef HAVE_DNSSEC
 	      /* remove validated flag from this RR, since we changed it! */
-	      if (option_bool(OPT_DNSSEC_VALID) && i < daemon->rr_status_sz && i <  ntohs(header->ancount))
+	      if (option_bool(OPT_DNSSEC_VALID) && i <  ntohs(header->ancount))
 		daemon->rr_status[i] = 0;
 #endif
 	      done = 1;
@@ -545,7 +540,7 @@ static int find_soa(struct dns_header *header, size_t qlen, char *name, int *sub
 
   for (i = 0; i < ntohs(header->nscount); i++)
     {
-      if (!extract_name(header, qlen, &p, daemon->workspacename, EXTR_NAME_EXTRACT, 10))
+      if (!extract_name(header, qlen, &p, daemon->workspacename, EXTR_NAME_EXTRACT, 0))
 	return 0; /* bad packet */
       
       GETSHORT(qtype, p); 
@@ -585,8 +580,11 @@ static int find_soa(struct dns_header *header, size_t qlen, char *name, int *sub
 		    {
 		      len = to_wire(daemon->workspacename);
 		      if (!blockdata_expand(addr.rrblock.rrdata, addr.rrblock.datalen, daemon->workspacename, len))
-			return 0;
-		      
+			{
+			  blockdata_free(addr.rrblock.rrdata);
+			  return 0;
+			}
+
 		      addr.rrblock.datalen += len;
 		    }
 		}
@@ -604,14 +602,15 @@ static int find_soa(struct dns_header *header, size_t qlen, char *name, int *sub
 		  int secflag = 0;
 
 		  if (!blockdata_expand(addr.rrblock.rrdata, addr.rrblock.datalen, (char *)p, 20))
-		    return 0;
-		    		  
+		    {
+		      blockdata_free(addr.rrblock.rrdata);
+		      return 0;
+		    }
+		  
 		  addr.rrblock.datalen += 20;
 		  
 #ifdef HAVE_DNSSEC
-		  if (option_bool(OPT_DNSSEC_VALID) &&
-		      i + ntohs(header->ancount) < daemon->rr_status_sz &&
-		      daemon->rr_status[i + ntohs(header->ancount)] != 0)
+		  if (option_bool(OPT_DNSSEC_VALID) && daemon->rr_status[i + ntohs(header->ancount)] != 0)
 		    {
 		      secflag = F_DNSSECOK; 
 		  
@@ -936,8 +935,10 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
 			    {
 			      /* Copy the rest of the RR and end. */
 			      if (!blockdata_expand(addr.rrblock.rrdata, addr.rrblock.datalen, (char *)p1, endrr - p1))
-				return 0;
-				
+				{
+				  blockdata_free(addr.rrblock.rrdata);
+				  return 0;
+				}
 			      addr.rrblock.datalen += endrr - p1;
 			    }
 			  else if (desc == 0)
@@ -945,8 +946,7 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
 			      /* Name, extract it then re-encode. */
 			      int len;
 			      
-			      /* rdlen may lie, and extract_name() advances p1 past where it says the record ends. */
-			      if (!extract_name(header, qlen, &p1, name, EXTR_NAME_EXTRACT, 0) || (p1 > endrr))
+			      if (!extract_name(header, qlen, &p1, name, EXTR_NAME_EXTRACT, 0))
 				{
 				  blockdata_free(addr.rrblock.rrdata);
 				  return 2;
@@ -954,8 +954,11 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
 			      
 			      len = to_wire(name);
 			      if (!blockdata_expand(addr.rrblock.rrdata, addr.rrblock.datalen, name, len))
-				return 0;
-							      
+				{
+				  blockdata_free(addr.rrblock.rrdata);
+				  return 0;
+				}
+			      
 			      addr.rrblock.datalen += len;
 			    }
 			  else
@@ -965,8 +968,11 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
 				desc = endrr - p1;
 
 			      if (!blockdata_expand(addr.rrblock.rrdata, addr.rrblock.datalen, (char *)p1, desc))
-				return 0;
-				
+				{
+				  blockdata_free(addr.rrblock.rrdata);
+				  return 0;
+				}
+
 			      addr.rrblock.datalen += desc;
 			      p1 += desc;
 			    }
@@ -1455,7 +1461,7 @@ int add_resource_record(struct dns_header *header, char *limit, int *truncp, int
   else
     {
       char *name = va_arg(ap, char *);
-      if (name && !(p = do_rfc1035_name(p, name, (unsigned char *)limit)))
+      if (name && !(p = do_rfc1035_name(p, name, limit)))
 	goto truncated;
       
       if (nameoffset < 0)
@@ -1519,7 +1525,7 @@ int add_resource_record(struct dns_header *header, char *limit, int *truncp, int
         /* get domain-name answer arg and store it in RDATA field */
         if (offset)
           *offset = p - (unsigned char *)header;
-        if (!(p = do_rfc1035_name(p, va_arg(ap, char *), (unsigned char *)limit)))
+        if (!(p = do_rfc1035_name(p, va_arg(ap, char *), limit)))
 	  goto truncated;
 	CHECK_LIMIT(1);
         *p++ = 0;

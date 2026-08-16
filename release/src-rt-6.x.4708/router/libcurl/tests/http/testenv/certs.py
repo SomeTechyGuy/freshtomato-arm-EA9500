@@ -484,7 +484,8 @@ class TestCA:
             else:
                 try:
                     names.append(x509.IPAddress(ipaddress.ip_address(name)))
-                except ValueError:
+                # TODO: specify specific exceptions here
+                except:  # noqa: E722
                     names.append(x509.DNSName(name))
 
         return csr.add_extension(

@@ -258,15 +258,8 @@ _GL_EXTERN_C void free (void *);
 
 
 #if @GNULIB_MBSZERO@
-# ifdef __has_builtin
-#  if __has_builtin (__builtin_memset)
-#   define _GL_WCHAR_MEMSET __builtin_memset
-#  endif
-# endif
-# ifndef _GL_WCHAR_MEMSET
-#  include <string.h>
-#  define _GL_WCHAR_MEMSET memset
-# endif
+/* Get memset().  */
+# include <string.h>
 #endif
 
 
@@ -594,7 +587,7 @@ _GL_INLINE
 _GL_ARG_NONNULL ((1)) void
 mbszero (mbstate_t *ps)
 {
-  _GL_WCHAR_MEMSET (ps, 0, _GL_MBSTATE_ZERO_SIZE);
+  memset (ps, 0, _GL_MBSTATE_ZERO_SIZE);
 }
 #  define GNULIB_defined_mbszero 1
 # endif

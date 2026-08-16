@@ -37,7 +37,6 @@ async def echo(websocket):
         async for message in websocket:
             await websocket.send(message)
     except ConnectionClosedError:
-        # websocket connection closed by client
         pass
 
 

@@ -19,7 +19,7 @@ ACLOCAL_AMFLAGS = -I common
 
 include $(srcdir)/common/doxygen.mk
 
-EXTRA_DIST = \
+EXTRA_DIST = config.rpath  \
 	autogen.sh \
 	bootstrap.sh \
 	LICENSE \
@@ -145,14 +145,11 @@ endif
 
 if ENABLE_CORE_DOCS
 DX_INPUT += \
-	$(srcdir)/avahi-core/dns.h \
 	$(srcdir)/avahi-core/core.h \
 	$(srcdir)/avahi-core/lookup.h \
 	$(srcdir)/avahi-core/publish.h \
 	$(srcdir)/avahi-core/rr.h \
-	$(srcdir)/avahi-core/log.h \
-	$(srcdir)/avahi-core/wide-area.h
-
+	$(srcdir)/avahi-core/log.h
 endif
 
 if HAVE_GTK

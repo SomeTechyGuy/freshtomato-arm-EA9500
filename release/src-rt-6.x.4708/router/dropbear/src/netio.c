@@ -307,7 +307,7 @@ void set_connect_fds(fd_set *writefd) {
 			connect_try_next(c);
 		}
 		if (c->sock >= 0) {
-			dropbear_fd_set(c->sock, writefd);
+			FD_SET(c->sock, writefd);
 		} else {
 			/* Final failure */
 			if (!c->errstring) {

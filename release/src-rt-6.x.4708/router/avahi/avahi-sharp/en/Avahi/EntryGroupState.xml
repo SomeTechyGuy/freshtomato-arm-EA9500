@@ -28,8 +28,8 @@
         <summary>To be added.</summary>
       </Docs>
     </Member>
-    <Member MemberName="Uncommitted">
-      <MemberSignature Language="C#" Value="Uncommitted" />
+    <Member MemberName="Uncommited">
+      <MemberSignature Language="C#" Value="Uncommited" />
       <MemberType>Field</MemberType>
       <ReturnValue>
         <ReturnType>Avahi.EntryGroupState</ReturnType>

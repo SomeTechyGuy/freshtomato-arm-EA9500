@@ -38,6 +38,7 @@
 
 #include <linux/version.h>
 #include <linux/sockios.h>
+#include <linux/ppp-ioctl.h>
 
 #ifndef aligned_u64
 /* should be defined in sys/types.h */
@@ -49,8 +50,6 @@
 #include <linux/ppp_defs.h>
 #include <linux/if_pppox.h>
 #include <linux/if_pppol2tp.h>
-
-#include <linux/ppp-ioctl.h>
 
 #include <pppd/pppd.h>
 #include <pppd/options.h>

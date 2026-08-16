@@ -345,7 +345,7 @@ PHPAPI int ValidateFormat(char *format, int numVars, int *totalSubs)
 			goto xpgCheckDone;
 		}
 
-		if ( isdigit( (unsigned char)*ch ) ) {
+		if ( isdigit( (int)*ch ) ) {
 			/*
 			 * Check for an XPG3-style %n$ specification.  Note: there
 			 * must not be a mixture of XPG3 specs and non-XPG3 specs
@@ -656,9 +656,9 @@ PHPAPI int php_sscanf_internal( char *string, char *format,
 		/*
 		 * If we see whitespace in the format, skip whitespace in the string.
 		 */
-		if ( isspace( (unsigned char)*ch ) ) {
+		if ( isspace( (int)*ch ) ) {
 			sch = *string;
-			while ( isspace( (unsigned char)sch ) ) {
+			while ( isspace( (int)sch ) ) {
 				if (*string == '\0') {
 					goto done;
 				}
@@ -809,7 +809,7 @@ literal:
 		if (!(flags & SCAN_NOSKIP)) {
 			while (*string != '\0') {
 				sch = *string;
-				if (! isspace((unsigned char)sch) ) {
+				if (! isspace((int)sch) ) {
 					break;
 				}
 				string++;
@@ -835,7 +835,7 @@ literal:
 				end = string;
 				while (*end != '\0') {
 					sch = *end;
-					if ( isspace( (unsigned char)sch ) ) {
+					if ( isspace( (int)sch ) ) {
 						break;
 					}
 					end++;

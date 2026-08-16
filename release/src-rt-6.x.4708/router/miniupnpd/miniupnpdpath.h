@@ -1,17 +1,16 @@
-/* $Id: miniupnpdpath.h,v 1.8 2011/05/20 17:51:23 nanard Exp $ */
+/* $Id: miniupnpdpath.h,v 1.9 2012/09/27 15:47:15 nanard Exp $ */
 /* MiniUPnP project
- * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
- * (c) 2006-2025 Thomas Bernard
+ * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
+ * (c) 2006-2011 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
 #ifndef MINIUPNPDPATH_H_INCLUDED
 #define MINIUPNPDPATH_H_INCLUDED
 
-/*! \file miniupnpdpath.h
- * \brief Paths and other URLs in the miniupnpd http server */
-
 #include "config.h"
+
+/* Paths and other URLs in the miniupnpd http server */
 
 #define ROOTDESC_PATH 		"/rootDesc.xml"
 
@@ -47,3 +46,4 @@
 #endif
 
 #endif
+

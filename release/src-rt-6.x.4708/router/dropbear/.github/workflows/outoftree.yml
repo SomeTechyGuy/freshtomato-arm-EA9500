@@ -5,12 +5,14 @@ on:
   pull_request:
   workflow_dispatch:
   push:
+    branches:
+      - master
 jobs:
   outoftree:
     runs-on: 'ubuntu-22.04'
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: build
         run: |

@@ -39,7 +39,7 @@ json_script_file_from_blobmsg(const char *name, void *data, int len)
 {
 	struct json_script_file *f;
 	char *new_name;
-	size_t name_len = 0;
+	int name_len = 0;
 
 	if (name)
 		name_len = strlen(name) + 1;
@@ -426,24 +426,17 @@ static int json_process_expr(struct json_call *call, struct blob_attr *cur)
 
 static int eval_string(struct json_call *call, struct blob_buf *buf, const char *name, const char *pattern)
 {
-	char *dest, *next, *str, *buffer;
-	size_t pattern_len;
+	char *dest, *next, *str;
 	int len = 0;
 	bool var = false;
 	char c = '%';
 
-	pattern_len = strlen(pattern);
-	buffer = malloc(pattern_len + 1);
-	if (!buffer)
-		return -1;
-	memcpy(buffer, pattern, pattern_len + 1);
-	next = buffer;
-
 	dest = blobmsg_alloc_string_buffer(buf, name, 0);
-	if (!dest) {
-		free(buffer);
+	if (!dest)
 		return -1;
-	}
+
+	next = alloca(strlen(pattern) + 1);
+	strcpy(next, pattern);
 
 	for (str = next; str; str = next) {
 		const char *cur;
@@ -494,7 +487,6 @@ static int eval_string(struct json_call *call, struct blob_buf *buf, const char 
 
 	dest[len] = 0;
 	blobmsg_add_string_buffer(buf);
-	free(buffer);
 
 	if (var)
 		return -1;
@@ -647,11 +639,13 @@ static void __json_script_file_free(struct json_script_file *f)
 {
 	struct json_script_file *next;
 
-	while (f) {
-		next = f->next;
-		free(f);
-		f = next;
-	}
+	if (!f)
+		return;
+
+	next = f->next;
+	free(f);
+
+	__json_script_file_free(next);
 }
 
 void

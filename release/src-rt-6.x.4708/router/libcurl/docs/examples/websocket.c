@@ -94,7 +94,7 @@ retry:
     else {
       /* some other frame arrived. */
       fprintf(stderr, "ws: received frame of %u bytes rflags %x\n",
-              (unsigned int)rlen, (unsigned int)meta->flags);
+              (unsigned int)rlen, meta->flags);
       goto retry;
     }
   }

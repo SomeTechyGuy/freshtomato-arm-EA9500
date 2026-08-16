@@ -53,13 +53,13 @@ static CURLcode test_lib562(const char *URL)
   }
 
   /* enable verbose */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* set port number */
-  easy_setopt(curl, CURLOPT_PORT, (long)port);
+  test_setopt(curl, CURLOPT_PORT, (long)port);
 
   /* specify target */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Now run off and do what you have been told! */
   result = curl_easy_perform(curl);

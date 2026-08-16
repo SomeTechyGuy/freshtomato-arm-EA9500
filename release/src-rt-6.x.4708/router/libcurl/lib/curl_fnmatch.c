@@ -96,25 +96,25 @@ static int parsekeyword(const unsigned char **pattern, unsigned char *charset)
 #undef KEYLEN
 
   *pattern = p; /* move caller's pattern pointer */
-  if(!strcmp(keyword, "digit"))
+  if(strcmp(keyword, "digit") == 0)
     charset[CURLFNM_DIGIT] = 1;
-  else if(!strcmp(keyword, "alnum"))
+  else if(strcmp(keyword, "alnum") == 0)
     charset[CURLFNM_ALNUM] = 1;
-  else if(!strcmp(keyword, "alpha"))
+  else if(strcmp(keyword, "alpha") == 0)
     charset[CURLFNM_ALPHA] = 1;
-  else if(!strcmp(keyword, "xdigit"))
+  else if(strcmp(keyword, "xdigit") == 0)
     charset[CURLFNM_XDIGIT] = 1;
-  else if(!strcmp(keyword, "print"))
+  else if(strcmp(keyword, "print") == 0)
     charset[CURLFNM_PRINT] = 1;
-  else if(!strcmp(keyword, "graph"))
+  else if(strcmp(keyword, "graph") == 0)
     charset[CURLFNM_GRAPH] = 1;
-  else if(!strcmp(keyword, "space"))
+  else if(strcmp(keyword, "space") == 0)
     charset[CURLFNM_SPACE] = 1;
-  else if(!strcmp(keyword, "blank"))
+  else if(strcmp(keyword, "blank") == 0)
     charset[CURLFNM_BLANK] = 1;
-  else if(!strcmp(keyword, "upper"))
+  else if(strcmp(keyword, "upper") == 0)
     charset[CURLFNM_UPPER] = 1;
-  else if(!strcmp(keyword, "lower"))
+  else if(strcmp(keyword, "lower") == 0)
     charset[CURLFNM_LOWER] = 1;
   else
     return SETCHARSET_FAIL;

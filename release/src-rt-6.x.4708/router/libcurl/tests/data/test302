@@ -6,6 +6,7 @@ HTTPS
 HTTP GET
 HTTP CONNECT
 HTTP proxy
+FAILURE
 </keywords>
 </info>
 

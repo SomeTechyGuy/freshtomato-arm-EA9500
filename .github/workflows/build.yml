@@ -11,9 +11,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
 
       - name: Ensure nss_wrapper is executable
         run: chmod +x docker/nss_wrapper
@@ -25,6 +22,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('docker/Dockerfile', 'docker/nss_wrapper') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -32,15 +37,26 @@ jobs:
           file: ./docker/Dockerfile
           load: true
           tags: ${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Rotate build cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Clean stale build artifacts
+        run: |
+          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config
+          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config.old
+          rm -f release/src-rt-7.14.114.x/src/linux/linux-2.6.36/.config.cmd
+          find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.cmd" -delete
+          find release/src-rt-7.14.114.x/src/linux/linux-2.6.36 -name "*.o" -delete
 
       - name: Build ea9400-128e firmware
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/ws \
-            -v "${{ github.workspace }}/.ccache":/ws/.ccache \
-            -e CCACHE_DIR=/ws/.ccache \
             --user "$(id -u):$(id -g)" \
             ${{ steps.meta.outputs.tag }} \
             make -C /ws/release/src-rt-7.14.114.x/src ea9400-128e
@@ -53,4 +69,4 @@ jobs:
             release/src-rt-7.14.114.x/src/image/*.trx
             release/src-rt-7.14.114.x/src/image/*.bin
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 30

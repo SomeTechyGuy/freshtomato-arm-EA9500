@@ -151,41 +151,23 @@ void ipt_routerpolicy(void)
 				continue;
 
 			if (atoi(dst_type) == 3) {
-				struct addrinfo hints, *p, *res = NULL;
-				struct addrinfo numeric_ai;
-				struct sockaddr_in numeric_sa;
-				char buf[INET_ADDRSTRLEN];
+				struct in_addr *addr;
+				struct addrinfo hints, *p;
+				struct addrinfo *res;
+				char buf[192];
 
-				memset(&numeric_sa, 0, sizeof(numeric_sa));
-				numeric_sa.sin_family = AF_INET;
+				memset(&hints, 0, sizeof(hints));
+				hints.ai_family = AF_INET; /* TODO: IPv6 support(?) */
+				hints.ai_socktype = SOCK_STREAM;
+				hints.ai_flags    = AI_PASSIVE;
 
-				if (inet_pton(AF_INET, dst_addr, &numeric_sa.sin_addr) == 1) {
-					memset(&numeric_ai, 0, sizeof(numeric_ai));
-					numeric_ai.ai_family = AF_INET;
-					numeric_ai.ai_addr = (struct sockaddr *)&numeric_sa;
-					numeric_ai.ai_addrlen = sizeof(numeric_sa);
-					p = &numeric_ai;
-				}
-				else {
-					memset(&hints, 0, sizeof(hints));
-					hints.ai_family = AF_INET; /* TODO: IPv6 support(?) */
-					hints.ai_socktype = SOCK_STREAM;
+				if (getaddrinfo(dst_addr, NULL, &hints, &res) != 0)
+					continue;
 
-					if (getaddrinfo(dst_addr, NULL, &hints, &res) != 0)
-						continue;
-
-					p = res;
-				}
-
-				for (; p != NULL; p = p->ai_next) {
-					struct sockaddr_in *ipv;
-
-					if (p->ai_family != AF_INET || p->ai_addr == NULL)
-						continue;
-
-					ipv = (struct sockaddr_in *)p->ai_addr;
-					if (inet_ntop(AF_INET, &ipv->sin_addr, buf, sizeof(buf)) == NULL)
-						continue;
+				for (p = res; p != NULL; p = p->ai_next) {
+					struct sockaddr_in *ipv = (struct sockaddr_in *)p->ai_addr;
+					addr = &(ipv->sin_addr);
+					inet_ntop(p->ai_family, addr, buf, sizeof(buf));
 
 					memset(mdst, 0, sizeof(mdst));
 					snprintf(mdst, sizeof(mdst), "-d %s", buf);
@@ -219,7 +201,7 @@ void ipt_routerpolicy(void)
 								          jump);
 						}
 						else
-							ipt_write("-A WAN_PBR -p %d %s %s -j %s\n",
+							ipt_write("-A WAN_PBR -p %s %s %s -j %s\n",
 							          proto_num, msrt, mdst, jump);
 					}
 					else {	/* any protocol */
@@ -227,8 +209,7 @@ void ipt_routerpolicy(void)
 						          msrt, mdst, jump);
 					}
 				}
-				if (res != NULL)
-					freeaddrinfo(res);
+				freeaddrinfo(res);
 			}
 			else {
 				memset(mdst, 0, sizeof(mdst));
@@ -264,7 +245,7 @@ void ipt_routerpolicy(void)
 							          jump);
 					}
 					else
-						ipt_write("-A WAN_PBR -p %d %s %s -j %s\n",
+						ipt_write("-A WAN_PBR -p %s %s %s -j %s\n",
 						          proto_num, msrt, mdst,
 							jump);
 				}

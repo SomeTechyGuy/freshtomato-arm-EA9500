@@ -27,7 +27,7 @@ body
 imap
 </server>
 <name>
-IMAP FETCH message with MAILINDEX
+IMAP FETCH message
 </name>
 <command>
 'imap://%HOSTIP:%IMAPPORT/%TESTNUMBER/;MAILINDEX=1' -u '"user:sec"ret{'

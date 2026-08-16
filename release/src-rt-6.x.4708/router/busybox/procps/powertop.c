@@ -238,7 +238,7 @@ static void save_line(const char *string, int count)
 #if ENABLE_FEATURE_POWERTOP_PROCIRQ
 static int is_hpet_irq(const char *name)
 {
-	const char *p;
+	char *p;
 # if BLOATY_HPET_IRQ_NUM_DETECTION
 	long hpet_chan;
 
@@ -423,8 +423,7 @@ static NOINLINE int process_timer_stats(void)
 //     1,  2159 udisks-daemon    hrtimer_start_range_ns (hrtimer_wakeup)
 // 331 total events, 249.059 events/sec
 		while (fgets(buf, sizeof(buf), fp)) {
-			const char *process, *func;
-			char *count;
+			const char *count, *process, *func;
 			char *p;
 			int idx;
 			unsigned cnt;

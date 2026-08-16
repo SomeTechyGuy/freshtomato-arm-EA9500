@@ -188,7 +188,7 @@ void jot_error(const char *msg, ...)
 
 	if (startup_problem == NULL) {
 #ifdef ENABLE_NANORC
-		if (nanorc) {
+		if (nanorc != NULL) {
 			snprintf(textbuf, MAXSIZE, _("Mistakes in '%s'"), nanorc);
 			startup_problem = copy_of(textbuf);
 		} else
@@ -197,7 +197,8 @@ void jot_error(const char *msg, ...)
 	}
 #ifdef ENABLE_NANORC
 	if (lineno > 0)
-		length = snprintf(textbuf, MAXSIZE, _("Error in %s on line %zu: "), nanorc, lineno);
+		length = snprintf(textbuf, MAXSIZE, _("Error in %s on line %zu: "),
+											nanorc, lineno);
 #endif
 	va_start(ap, msg);
 	length += vsnprintf(textbuf + length, MAXSIZE - length, _(msg), ap);
@@ -408,6 +409,8 @@ keystruct *strtosc(const char *input)
 		s->func = backwards_void;
 	else if (!strcmp(input, "flipreplace"))
 		s->func = flip_replace;
+	else if (!strcmp(input, "flipgoto"))
+		s->func = flip_goto;
 #ifdef ENABLE_HISTORIES
 	else if (!strcmp(input, "older"))
 		s->func = get_older_item;
@@ -417,6 +420,8 @@ keystruct *strtosc(const char *input)
 #ifndef NANO_TINY
 	else if (!strcmp(input, "dosformat"))
 		s->func = dos_format;
+	else if (!strcmp(input, "macformat"))
+		s->func = mac_format;
 	else if (!strcmp(input, "append"))
 		s->func = append_it;
 	else if (!strcmp(input, "prepend"))
@@ -533,7 +538,7 @@ char *menu_to_name(int menu)
  * point to '\0' when end-of-line was reached. */
 char *parse_next_word(char *ptr)
 {
-	while (*ptr && !isblank((unsigned char)*ptr))
+	while (!isblank((unsigned char)*ptr) && *ptr != '\0')
 		ptr++;
 
 	if (*ptr == '\0')
@@ -553,18 +558,19 @@ char *parse_next_word(char *ptr)
  * end -- meaning that an argument can contain "'s either way. */
 char *parse_argument(char *ptr)
 {
-	const char *the_start = ptr;
+	const char *ptr_save = ptr;
 	char *last_quote = NULL;
 
 	if (*ptr != '"')
 		return parse_next_word(ptr);
 
-	while (*ptr)
+	while (*ptr != '\0') {
 		if (*++ptr == '"')
 			last_quote = ptr;
+	}
 
 	if (last_quote == NULL) {
-		jot_error(N_("Argument '%s' has an unterminated \""), the_start);
+		jot_error(N_("Argument '%s' has an unterminated \""), ptr_save);
 		return NULL;
 	}
 
@@ -591,7 +597,8 @@ char *parse_next_regex(char *ptr)
 
 	/* Continue until the end of the line, or until a double quote followed
 	 * by end-of-line or a blank. */
-	while (*ptr && (*ptr != '"' || (ptr[1] && !isblank((unsigned char)ptr[1]))))
+	while (*ptr != '\0' && (*ptr != '"' ||
+						(ptr[1] != '\0' && !isblank((unsigned char)ptr[1]))))
 		ptr++;
 
 	if (*ptr == '\0') {
@@ -695,13 +702,13 @@ void begin_new_syntax(char *ptr)
 	seen_color_command = FALSE;
 
 	/* The default syntax should have no associated extensions. */
-	if (*ptr && strcmp(live_syntax->name, "default") == 0) {
+	if (strcmp(live_syntax->name, "default") == 0 && *ptr != '\0') {
 		jot_error(N_("The \"default\" syntax does not accept extensions"));
 		return;
 	}
 
 	/* If there seem to be extension regexes, pick them up. */
-	if (*ptr)
+	if (*ptr != '\0')
 		grab_and_store("extension", ptr, &live_syntax->extensions);
 }
 #endif /* ENABLE_COLOR */
@@ -791,7 +798,8 @@ void parse_binding(char *ptr, bool dobind)
 
 	if (menuptr[0] == '\0') {
 		/* TRANSLATORS: Do not translate the word "all". */
-		jot_error(N_("Must specify a menu (or \"all\") in which to bind/unbind the key"));
+		jot_error(N_("Must specify a menu (or \"all\") "
+						"in which to bind/unbind the key"));
 		goto free_things;
 	}
 
@@ -854,7 +862,8 @@ void parse_binding(char *ptr, bool dobind)
 
 	if (!menu) {
 		if (!ISSET(RESTRICTED) && !ISSET(VIEW_MODE))
-			jot_error(N_("Function '%s' does not exist in menu '%s'"), funcptr, menuptr);
+			jot_error(N_("Function '%s' does not exist in menu '%s'"),
+								funcptr, menuptr);
 		goto free_things;
 	}
 
@@ -891,14 +900,14 @@ bool is_good_file(char *file)
 	struct stat rcinfo;
 
 	/* First check that the file exists and is readable. */
-	if (access(file, R_OK) < 0)
+	if (access(file, R_OK) != 0)
 		return FALSE;
 
 	/* If the thing exists, it may be neither a directory nor a device. */
-	if (stat(file, &rcinfo) == 0 && (S_ISDIR(rcinfo.st_mode) ||
+	if (stat(file, &rcinfo) != -1 && (S_ISDIR(rcinfo.st_mode) ||
 				S_ISCHR(rcinfo.st_mode) || S_ISBLK(rcinfo.st_mode))) {
-		jot_error(S_ISDIR(rcinfo.st_mode) ? N_("'%s' is a directory") :
-										N_("'%s' is a device file"), file);
+		jot_error(S_ISDIR(rcinfo.st_mode) ? N_("\"%s\" is a directory") :
+										N_("\"%s\" is a device file"), file);
 		return FALSE;
 	} else
 		return TRUE;
@@ -947,7 +956,7 @@ void parse_one_include(char *file, syntaxtype *syntax)
 	extra = syntax->augmentations;
 
 	/* Apply any stored extendsyntax commands. */
-	while (extra) {
+	while (extra != NULL) {
 		char *keyword = extra->data;
 		char *therest = parse_next_word(extra->data);
 
@@ -960,7 +969,6 @@ void parse_one_include(char *file, syntaxtype *syntax)
 		extra = extra->next;
 	}
 
-	/* Indicate that this syntax has been loaded. */
 	free(syntax->filename);
 	syntax->filename = NULL;
 
@@ -988,7 +996,7 @@ void parse_includes(char *ptr)
 	}
 
 	/* Expand a tilde first, then try to match the globbing pattern. */
-	expanded = expand_leading_tilde(pattern);
+	expanded = real_dir_from_tilde(pattern);
 	result = glob(expanded, GLOB_ERR|GLOB_NOCHECK, NULL, &files);
 
 	/* If there are matches, process each of them.  Otherwise, only
@@ -1049,12 +1057,12 @@ short indices[COLORCOUNT] = { COLOR_RED, COLOR_GREEN, COLOR_BLUE,
  * vivid to TRUE for a lighter color, and thick for a heavier typeface. */
 short color_to_short(const char *colorname, bool *vivid, bool *thick)
 {
-	if (strncmp(colorname, "bright", 6) == 0 && colorname[6]) {
+	if (strncmp(colorname, "bright", 6) == 0 && colorname[6] != '\0') {
 		/* Prefix "bright" is deprecated; remove in 2027. */
 		*vivid = TRUE;
 		*thick = TRUE;
 		colorname += 6;
-	} else if (strncmp(colorname, "light", 5) == 0 && colorname[5]) {
+	} else if (strncmp(colorname, "light", 5) == 0 && colorname[5] != '\0') {
 		*vivid = TRUE;
 		*thick = FALSE;
 		colorname += 5;
@@ -1172,7 +1180,7 @@ void parse_rule(char *ptr, int rex_flags)
 		return;
 	}
 
-	while (*ptr) {
+	while (*ptr != '\0') {
 		regex_t *start_rgx = NULL, *end_rgx = NULL;
 			/* Intermediate storage for compiled regular expressions. */
 		colortype *newcolor = NULL;
@@ -1262,7 +1270,7 @@ void grab_and_store(const char *kind, char *ptr, regexlisttype **storage)
 	}
 
 	/* The default syntax doesn't take any file matching stuff. */
-	if (*ptr && strcmp(live_syntax->name, "default") == 0) {
+	if (strcmp(live_syntax->name, "default") == 0 && *ptr != '\0') {
 		jot_error(N_("The \"default\" syntax does not accept '%s' regexes"), kind);
 		return;
 	}
@@ -1275,11 +1283,11 @@ void grab_and_store(const char *kind, char *ptr, regexlisttype **storage)
 	lastthing = *storage;
 
 	/* If there was an earlier command, go to the last of those regexes. */
-	while (lastthing && lastthing->next)
+	while (lastthing != NULL && lastthing->next != NULL)
 		lastthing = lastthing->next;
 
 	/* Now gather any valid regexes and add them to the linked list. */
-	while (*ptr) {
+	while (*ptr != '\0') {
 		regex_t *packed_rgx = NULL;
 
 		regexstring = ++ptr;
@@ -1462,9 +1470,9 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 				newitem->data = argument;
 				newitem->next = NULL;
 
-				if (sntx->augmentations) {
+				if (sntx->augmentations != NULL) {
 					extra = sntx->augmentations;
-					while (extra->next)
+					while (extra->next != NULL)
 						extra = extra->next;
 					extra->next = newitem;
 				} else
@@ -1496,7 +1504,8 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 								strcmp(keyword, "include") == 0 ||
 								strcmp(keyword, "extendsyntax") == 0)) {
 			if (intros_only)
-				jot_error(N_("Command \"%s\" not allowed in included file"), keyword);
+				jot_error(N_("Command \"%s\" not allowed in included file"),
+									keyword);
 			else
 				break;
 		} else if (intros_only && (strcmp(keyword, "color") == 0 ||
@@ -1506,7 +1515,8 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 								strcmp(keyword, "linter") == 0 ||
 								strcmp(keyword, "formatter") == 0)) {
 			if (!opensyntax)
-				jot_error(N_("A '%s' command requires a preceding 'syntax' command"), keyword);
+				jot_error(N_("A '%s' command requires a preceding "
+									"'syntax' command"), keyword);
 			if (strstr("icolor", keyword))
 				seen_color_command = TRUE;
 			continue;
@@ -1703,7 +1713,7 @@ void parse_one_nanorc(void)
 
 	/* If opening the file succeeded, parse it.  Otherwise, only
 	 * complain if the file actually exists. */
-	if (rcstream)
+	if (rcstream != NULL)
 		parse_rcfile(rcstream, FALSE, TRUE);
 	else if (errno != ENOENT)
 		jot_error(N_("Error reading %s: %s"), nanorc, strerror(errno));
@@ -1727,7 +1737,7 @@ void do_rcfiles(void)
 {
 	if (custom_nanorc) {
 		nanorc = get_full_path(custom_nanorc);
-		if (nanorc == NULL || access(nanorc, F_OK) < 0)
+		if (nanorc == NULL || access(nanorc, F_OK) != 0)
 			die(_("Specified rcfile does not exist\n"));
 		if (is_good_file(nanorc))
 			parse_one_nanorc();

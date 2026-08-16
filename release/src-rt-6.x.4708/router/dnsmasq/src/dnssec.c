@@ -144,7 +144,7 @@ static int is_check_date(unsigned long curtime)
    Init state->ip with the RR, and state->end with the end of same.
    Init state->op to NULL.
    Init state->desc to RR descriptor.
-   Init state->buff with a MAXDNAMESTR+1 buffer.
+   Init state->buff with a MAXDNAME * 2 buffer.
    
    After each call which returns 1, state->op points to the next byte of data.
    On returning 0, the end has been reached.
@@ -177,7 +177,7 @@ static int get_rdata(struct dns_header *header, size_t plen, struct rdata_state 
 	  if ((state->c = state->end - state->ip) != 0)
 	    {
 	      state->op = state->ip;
-	      state->ip = state->end;
+	      state->ip = state->end;;
 	    }
 	  else
 	    return 0;
@@ -189,28 +189,24 @@ static int get_rdata(struct dns_header *header, size_t plen, struct rdata_state 
 	  if (d == (u16)0)
 	    {
 	      /* domain-name, canonicalise */
+	      int len;
 	      
-	      /* If the name is malformed, or runs beyond the end of the RR, abort.
-		 under no circumstances should state->ip be beyond state->end since
-		 that will cause the run-out code above to turn the negative
-		 calculted length into a very large postive value for state->c
-		 and overrun the buffer. */
 	      if (!extract_name(header, plen, &state->ip, state->buff, EXTR_NAME_EXTRACT, 0) ||
-		  state->ip > state->end)
-		return 0;
-
-	      /* to_wire() always returns length > 0 */
-	      state->c = to_wire(state->buff);
+		  (len = to_wire(state->buff)) == 0)
+		continue;
+	      
+	      state->c = len;
 	      state->op = (unsigned char *)state->buff;
 	    }
 	  else
 	    {
-	      /* Plain data preceding a domain-name.
-		 Handle short RR, if there are no bytes left, return finished. */
-	      if ((state->end - state->ip) < d &&
-		  (d = state->end - state->ip) == 0)
-		return 0;
-				  
+	      /* plain data preceding a domain-name, don't run off the end of the data */
+	      if ((state->end - state->ip) < d)
+		d = state->end - state->ip;
+	      
+	      if (d == 0)
+		continue;
+		  
 	      state->op = state->ip;
 	      state->c = d;
 	      state->ip += d;
@@ -387,7 +383,7 @@ static int explore_rrset(struct dns_header *header, size_t plen, int class, int 
 		     an attacker using signatures made with the key of an unrelated 
 		     zone he controls. Note that the root key is always allowed.
 		     Ignore sigs which aren't valid */
-		  if (*daemon->workspacename == 0 || hostname_issubdomain(daemon->workspacename, name) != 0)
+		  if (*daemon->workspacename == 0 || hostname_issubdomain(name, daemon->workspacename) != 0)
 		    {
 		      if (gotkey)
 			{
@@ -547,14 +543,10 @@ static int validate_rrset(time_t now, struct dns_header *header, size_t plen, in
 
 	   *ttl_out = ttl;
 	 }
-
-      /* Don't trust rdlen not to be too small and give us a negative sig_len
-	 It has already been checked that it doesn't run us off the end
-	 of the packet. */
-      if ((sig_len = rdlen - (p - psav)) <= 0)
-	return STAT_BOGUS;
-
+       
       sig = p;
+      sig_len = rdlen - (p - psav);
+              
       nsigttl = htonl(orig_ttl);
       
       hash->update(ctx, 18, psav);
@@ -1251,23 +1243,15 @@ static int hostname_cmp(const char *a, const char *b)
     }
 }
 
-static int check_type_bitmap(unsigned char *p, int type)
-{
-  int offset = (type & 0xff) >> 3;
-  
-  if (p[0] == type >> 8 && p[1] > offset && (p[offset + 2] & (0x80 >> (type & 0x07))))
-    return 1;
-
-  return 0;
-}
-  
 /* returns 0 on success, or DNSSEC_FAIL_* value on failure. */
 static int prove_non_existence_nsec(struct dns_header *header, size_t plen, unsigned char **nsecs, unsigned char **labels, int nsec_count,
 				    char *workspace1_in, char *workspace2, char *name, int type, int *nons)
 {
   int i, rc, rdlen;
   unsigned char *p, *psave;
-  
+  int offset = (type & 0xff) >> 3;
+  int mask = 0x80 >> (type & 0x07);
+
   if (nons)
     *nons = 1;
   
@@ -1311,6 +1295,17 @@ static int prove_non_existence_nsec(struct dns_header *header, size_t plen, unsi
       /* rdlen is now length of type map, and p points to it 
 	 packet checked to be as long as rdlen implies in prove_non_existence() */
       
+      /* check that the first typemap is complete. */
+      if (rdlen < 2 || rdlen < p[1] + 2)
+	return DNSSEC_FAIL_BADPACKET;
+
+      /* RFC 6672 5.3.4.1. */
+#define DNAME_OFFSET (T_DNAME >> 3)
+#define DNAME_MASK (0x80 >> (T_DNAME & 0x07))
+      if (p[0] == 0 && (p[1] >= DNAME_OFFSET + 1) && (p[2 + DNAME_OFFSET] & DNAME_MASK) != 0 &&
+	  hostname_issubdomain(name, workspace1) == 1)
+	return DNSSEC_FAIL_NONSEC;
+      
       rc = hostname_cmp(workspace1, name);
       
       if (rc == 0)
@@ -1319,37 +1314,42 @@ static int prove_non_existence_nsec(struct dns_header *header, size_t plen, unsi
 	  if (type == T_NSEC || type == T_RRSIG)
 	    return 0;
 
+	  /* NSEC with the same name as the RR we're testing, check
+	     that the type in question doesn't appear in the type map */
+	  if (p[0] == 0 && p[1] >= 1)
+	    {
+	      /* If we can prove that there's no NS record, return that information. */
+	      if (nons && (p[2] & (0x80 >> T_NS)) != 0)
+		*nons = 0;
+	    
+	      /* A CNAME answer would also be valid, so if there's a CNAME is should 
+		 have been returned. */
+	      if ((p[2] & (0x80 >> T_CNAME)) != 0)
+		return DNSSEC_FAIL_NONSEC;
+	      
+	      /* If the SOA bit is set for a DS record, then we have the
+		 DS from the wrong side of the delegation. For the root DS, 
+		 this is expected. */
+	      if (name_labels != 0 && type == T_DS && (p[2] & (0x80 >> T_SOA)) != 0)
+		return DNSSEC_FAIL_NONSEC;
+	    }
+	  
 	  while (rdlen > 0)
 	    {
 	      if (rdlen < 2 || rdlen < p[1] + 2)
 		return DNSSEC_FAIL_BADPACKET;
 	      
-	      /* If we can prove that there's no NS record, return that information. */
-	      if (nons && check_type_bitmap(p, T_NS))
-		*nons = 0;
-	      
-	      /* NSEC with the same name as the RR we're testing, check
-		 that the type in question doesn't appear in the type map */
-	      if (check_type_bitmap(p, type))
-		return DNSSEC_FAIL_NONSEC;
-
-	      /* A CNAME answer would also be valid, so if there's a CNAME it should 
-		 have been returned. */
-	      if (check_type_bitmap(p, T_CNAME))
-		return DNSSEC_FAIL_NONSEC;
+	      if (p[0] == type >> 8)
+		{
+		  /* Does the NSEC say our type exists? */
+		  if (offset < p[1] && (p[offset+2] & mask) != 0)
+		    return DNSSEC_FAIL_NONSEC;
 		  
-	      /* If the SOA bit is set for a DS record, then we have the
-		 DS from the wrong side of the delegation. For the root DS, 
-		 this is expected. */
-	      if (name_labels != 0 && type == T_DS && check_type_bitmap(p, T_SOA))
-		return DNSSEC_FAIL_NONSEC;
+		  break; /* finished checking */
+		}
 	      
-	      /* RFC 6672 5.3.4.1. */
-	      if (check_type_bitmap(p, T_DNAME) && hostname_issubdomain(name, workspace1) == 1)
-		return DNSSEC_FAIL_NONSEC;
-	      
-	      rdlen -= p[1] + 2;
-	      p +=  p[1] + 2;
+	      rdlen -= p[1];
+	      p +=  p[1];
 	    }
 	  
 	  return 0;
@@ -1437,7 +1437,6 @@ static int base32_decode(char *in, unsigned char *out)
   return p - out;
 }
 
-/* return 1 if we can prove record _doesn't_ exist */
 static int check_nsec3_coverage(struct dns_header *header, size_t plen, int digest_len, unsigned char *digest, int type,
 				char *workspace1, char *workspace2, unsigned char **nsecs, int nsec_count, int *nons, int name_labels)
 {
@@ -1474,35 +1473,50 @@ static int check_nsec3_coverage(struct dns_header *header, size_t plen, int dige
 		   we just need to check the type map. p points to the RR data for the record.
 		   Note we have packet length up to rdlen bytes checked. */
 		
+		int offset = (type & 0xff) >> 3;
+		int mask = 0x80 >> (type & 0x07);
+		
 		p += hash_len; /* skip next-domain hash */
 		rdlen -= p - psave;
+
+		/* check that the first typemap is complete. */
+		if (rdlen < 2 || rdlen < p[1] + 2)
+		  return DNSSEC_FAIL_BADPACKET;
 		
+		if (p[0] == 0 && p[1] >= 1)
+		  {
+		    /* If we can prove that there's no NS record, return that information. */
+		    if (nons && (p[2] & (0x80 >> T_NS)) != 0)
+		      *nons = 0;
+		    
+		    /* A CNAME answer would also be valid, so if there's a CNAME is should 
+		       have been returned. */
+		    if ((p[2] & (0x80 >> T_CNAME)) != 0)
+		      return 0;
+		    
+		    /* If the SOA bit is set for a DS record, then we have the
+		       DS from the wrong side of the delegation. For the root DS, 
+		       this is expected.  */
+		    if (name_labels != 0 && type == T_DS && (p[2] & (0x80 >> T_SOA)) != 0)
+		      return 0;
+		  }
+
 		while (rdlen > 0)
 		  {
 		    if (rdlen < 2 || rdlen < p[1] + 2)
-		      return 0;
-	      
-		    /* If we can prove that there's no NS record, return that information. */
-		    if (nons && check_type_bitmap(p, T_NS))
-		      *nons = 0;
+		      return DNSSEC_FAIL_BADPACKET;
 
-		    /* Does the NSEC3 say our type exists? */
-		    if (check_type_bitmap(p, type))
-		      return 0;
-
-		    /* A CNAME answer would also be valid, so if there's a CNAME it should 
-		       have been returned. */
-		    if (check_type_bitmap(p, T_CNAME))
-		      return 0;
-		  
-		    /* If the SOA bit is set for a DS record, then we have the
-		       DS from the wrong side of the delegation. For the root DS, 
-		       this is expected. */
-		    if (name_labels != 0 && type == T_DS && check_type_bitmap(p, T_SOA))
-		      return 0;
-	      
-		    rdlen -= p[1] + 2;
-		    p +=  p[1] + 2;
+		    if (p[0] == type >> 8)
+		      {
+			/* Does the NSEC3 say our type exists? */
+			if (offset < p[1] && (p[offset+2] & mask) != 0)
+			  return 0;
+			
+			break; /* finished checking */
+		      }
+		    
+		    rdlen -= p[1];
+		    p +=  p[1];
 		  }
 		
 		return 1;
@@ -2099,8 +2113,8 @@ int dnssec_validate_reply(time_t now, struct dns_header *header, size_t plen, ch
 		       CNAME must be <subdomain>.<dname>
 		       CNAME target must be <subdomain>.<dname_target>
 		       <subdomain>s must match for name and target. */ 
-		    if (hostname_issubdomain(name, daemon->cname) == 1 &&
-			hostname_issubdomain(keyname, daemon->workspacename) == 1 &&
+		    if (hostname_issubdomain(daemon->cname, name) == 1 &&
+			hostname_issubdomain(daemon->workspacename, keyname) == 1 &&
 			name_prefix_len == strlen(daemon->workspacename) - strlen(keyname))
 		      {
 			char save = daemon->cname[name_prefix_len];
@@ -2336,7 +2350,7 @@ int dnskey_keytag(int alg, int flags, unsigned char *key, int keylen)
     }
 }
 
-size_t dnssec_generate_query(struct dns_header *header, size_t outlen, char *name,
+size_t dnssec_generate_query(struct dns_header *header, unsigned char *end, char *name,
 			     int class, int id, int type)
 {
   unsigned char *p;
@@ -2360,7 +2374,7 @@ size_t dnssec_generate_query(struct dns_header *header, size_t outlen, char *nam
   PUTSHORT(type, p);
   PUTSHORT(class, p);
 
-  return add_do_bit(header, p - (unsigned char *)header, outlen);
+  return add_do_bit(header, p - (unsigned char *)header, end);
 }
 
 int errflags_to_ede(int status)

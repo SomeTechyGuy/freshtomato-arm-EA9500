@@ -50,9 +50,6 @@ any way reset between transfers, so if you want subsequent transfers with
 different options, you must change them between the transfers. You can
 optionally reset all options back to internal default with curl_easy_reset(3).
 
-Changing options with curl_easy_setopt(3) while a transfer is still in
-progress may cause undefined and undesired behavior.
-
 The order in which the options are set does not matter.
 
 # STRINGS
@@ -72,7 +69,7 @@ Passing in "creative octets" like newlines where they are not expected might
 trigger unexpected results.
 
 Before version 7.17.0, strings were not copied. Instead the user was forced
-to keep them available until libcurl no longer needed them.
+keep them available until libcurl no longer needed them.
 
 # OPTIONS
 
@@ -1165,12 +1162,11 @@ Redirect stderr to another stream. See CURLOPT_STDERR(3)
 
 ## CURLOPT_STREAM_DEPENDS
 
-**Deprecated option** This HTTP/2 stream depends on another. See
-CURLOPT_STREAM_DEPENDS(3)
+This HTTP/2 stream depends on another. See CURLOPT_STREAM_DEPENDS(3)
 
 ## CURLOPT_STREAM_DEPENDS_E
 
-**Deprecated option** This HTTP/2 stream depends on another exclusively. See
+This HTTP/2 stream depends on another exclusively. See
 CURLOPT_STREAM_DEPENDS_E(3)
 
 ## CURLOPT_STREAM_WEIGHT

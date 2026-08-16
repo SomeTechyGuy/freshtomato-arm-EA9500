@@ -212,8 +212,8 @@ static int bind_with_warn(int fd, const struct sockaddr *sa, socklen_t l) {
     } else {
 
         /* We enable SO_REUSEADDR afterwards, to make sure that the
-         * user may run other mDNS implementations if they really
-         * want. */
+         * user may run other mDNS implementations if he really
+         * wants. */
 
         if (reuseaddr(fd) < 0)
             return -1;
@@ -440,8 +440,7 @@ fail:
     return -1;
 }
 
-static int sendmsg_loop(int fd, struct msghdr *msg, int flags, AvahiIfIndex interface) {
-
+static int sendmsg_loop(int fd, struct msghdr *msg, int flags) {
     assert(fd >= 0);
     assert(msg);
 
@@ -465,7 +464,7 @@ static int sendmsg_loop(int fd, struct msghdr *msg, int flags, AvahiIfIndex inte
                 where[0] = '\0';
             }
 
-            avahi_log_debug("sendmsg() to %s (iface #%d) failed: %s", where, interface, strerror(errno));
+            avahi_log_debug("sendmsg() to %s failed: %s", where, strerror(errno));
 
             return -1;
 
@@ -569,7 +568,7 @@ int avahi_send_dns_packet_ipv4(
 #warning "FIXME: We need some code to set the outgoing interface/local address here if IP_PKTINFO/IP_MULTICAST_IF is not available"
 #endif
 
-    return sendmsg_loop(fd, &msg, 0, interface);
+    return sendmsg_loop(fd, &msg, 0);
 }
 
 int avahi_send_dns_packet_ipv6(
@@ -631,7 +630,7 @@ int avahi_send_dns_packet_ipv6(
         msg.msg_controllen = 0;
     }
 
-    return sendmsg_loop(fd, &msg, 0, interface);
+    return sendmsg_loop(fd, &msg, 0);
 }
 
 AvahiDnsPacket *avahi_recv_dns_packet_ipv4(

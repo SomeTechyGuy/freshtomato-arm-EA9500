@@ -16,8 +16,7 @@ Example:
 
 # `--proto-default`
 
-Use *protocol* for any provided URL missing a scheme. The case-insensitive
-name should be given without any `://` suffix.
+Use *protocol* for any provided URL missing a scheme.
 
 An unknown or unsupported protocol causes error *CURLE_UNSUPPORTED_PROTOCOL*.
 
@@ -25,6 +24,3 @@ This option does not change the default proxy protocol (http).
 
 Without this option set, curl guesses protocol based on the hostname, see
 --url for details.
-
-The default protocol cannot be set to `ipfs` or `ipns`. Those schemes need to
-be used explicitly in the URL.

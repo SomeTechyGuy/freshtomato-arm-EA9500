@@ -215,8 +215,7 @@ int cp_main(int argc, char **argv)
 					(flags & FILEUTILS_DEREFERENCE) ? stat : lstat);
 			if (s_flags < 0) /* error other than ENOENT */
 				return EXIT_FAILURE;
-			d_flags = cp_mv_stat2(last, &dest_stat,
-					(flags & FILEUTILS_NO_TARGET_DIR) ? lstat : stat);
+			d_flags = cp_mv_stat(last, &dest_stat);
 			if (d_flags < 0) /* error other than ENOENT */
 				return EXIT_FAILURE;
 

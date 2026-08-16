@@ -913,8 +913,7 @@ int nmeter_main(int argc UNUSED_PARAM, char **argv)
 	// parameters as seen by e.g. ps. Making a copy...
 	cur = xstrdup(argv[0]);
 	while (1) {
-		char *param;
-		const char *p;
+		char *param, *p;
 		prev = cur;
  again:
 		cur = strchr(cur, '%');
@@ -930,7 +929,7 @@ int nmeter_main(int argc UNUSED_PARAM, char **argv)
 			// format: %[foptstring]
 			cur++;
 			p = strchr(options, cur[0]);
-			param = cur + 1;
+			param = cur+1;
 			while (cur[0] != ']') {
 				if (!cur[0])
 					bb_show_usage();

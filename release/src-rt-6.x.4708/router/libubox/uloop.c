@@ -85,12 +85,12 @@ int uloop_fd_add(struct uloop_fd *sock, unsigned int flags);
 static void set_signo(uint64_t *signums, int signo)
 {
 	if (signo >= 1 && signo <= 64)
-		*signums |= (UINT64_C(1) << (signo - 1));
+		*signums |= (1u << (signo - 1));
 }
 
 static bool get_signo(uint64_t signums, int signo)
 {
-	return (signo >= 1) && (signo <= 64) && (signums & (UINT64_C(1) << (signo - 1)));
+	return (signo >= 1) && (signo <= 64) && (signums & (1u << (signo - 1)));
 }
 
 static void signal_consume(struct uloop_fd *fd, unsigned int events)
@@ -121,15 +121,8 @@ static struct uloop_fd waker_fd = {
 
 static void waker_init_fd(int fd)
 {
-	int flags;
-
-	flags = fcntl(fd, F_GETFD);
-	if (flags >= 0)
-		fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-
-	flags = fcntl(fd, F_GETFL);
-	if (flags >= 0)
-		fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
 static int waker_init(void)
@@ -242,16 +235,16 @@ static void uloop_run_events(int64_t timeout)
 
 int uloop_fd_add(struct uloop_fd *sock, unsigned int flags)
 {
-	int fl;
+	unsigned int fl;
 	int ret;
 
-	if (!(flags & (ULOOP_READ | ULOOP_WRITE | ULOOP_PRIORITY)))
+	if (!(flags & (ULOOP_READ | ULOOP_WRITE)))
 		return uloop_fd_delete(sock);
 
 	if (!sock->registered && !(flags & ULOOP_BLOCKING)) {
 		fl = fcntl(sock->fd, F_GETFL, 0);
-		if (fl >= 0)
-			fcntl(sock->fd, F_SETFL, fl | O_NONBLOCK);
+		fl |= O_NONBLOCK;
+		fcntl(sock->fd, F_SETFL, fl);
 	}
 
 	ret = register_poll(sock, flags);

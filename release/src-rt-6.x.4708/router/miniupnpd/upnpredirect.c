@@ -1,8 +1,8 @@
-/* $Id: upnpredirect.c,v 1.102 2025/04/12 23:14:31 nanard Exp $ */
+/* $Id: upnpredirect.c,v 1.100 2024/03/19 23:34:58 nanard Exp $ */
 /* vim: tabstop=4 shiftwidth=4 noexpandtab
  * MiniUPnP project
  * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
- * (c) 2006-2025 Thomas Bernard
+ * (c) 2006-2024 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -50,6 +50,45 @@
 #ifndef PRIu64
 #define PRIu64 "llu"
 #endif
+
+/* proto_atoi()
+ * convert the string "UDP" or "TCP" to IPPROTO_UDP and IPPROTO_UDP */
+static int
+proto_atoi(const char * protocol)
+{
+	int proto = IPPROTO_TCP;
+	if(strcasecmp(protocol, "UDP") == 0)
+		proto = IPPROTO_UDP;
+#ifdef IPPROTO_UDPLITE
+	else if(strcasecmp(protocol, "UDPLITE") == 0)
+		proto = IPPROTO_UDPLITE;
+#endif /* IPPROTO_UDPLITE */
+	return proto;
+}
+
+/* proto_itoa()
+ * convert IPPROTO_UDP, IPPROTO_UDP, etc. to "UDP", "TCP" */
+static const char *
+proto_itoa(int proto)
+{
+	const char * protocol;
+	switch(proto) {
+	case IPPROTO_UDP:
+		protocol = "UDP";
+		break;
+	case IPPROTO_TCP:
+		protocol = "TCP";
+		break;
+#ifdef IPPROTO_UDPLITE
+	case IPPROTO_UDPLITE:
+		protocol = "UDPLITE";
+		break;
+#endif /* IPPROTO_UDPLITE */
+	default:
+		protocol = "*UNKNOWN*";
+	}
+	return protocol;
+}
 
 #ifdef ENABLE_LEASEFILE
 static int
@@ -147,7 +186,7 @@ lease_file_remove(unsigned short eport, int proto)
 /* reload_from_lease_file()
  * read lease_file and add the rules contained
  */
-int reload_from_lease_file(void)
+int reload_from_lease_file()
 {
 	FILE * fd;
 	char * p;
@@ -162,7 +201,7 @@ int reload_from_lease_file(void)
 #ifndef LEASEFILE_USE_REMAINING_TIME
 	time_t current_unix_time;
 #endif
-	char line[320];
+	char line[128];
 	int r;
 
 	if(!lease_file) return -1;
@@ -231,8 +270,7 @@ int reload_from_lease_file(void)
 			timestamp += current_time;	/* convert to our time */
 #else
 			if(timestamp <= (unsigned int)current_unix_time) {
-				syslog(LOG_NOTICE, "already expired lease in lease file (%hu=>%s:%hu %s)",
-				       eport, iaddr, iport, proto);
+				syslog(LOG_NOTICE, "already expired lease in lease file");
 				continue;
 			} else {
 				leaseduration = timestamp - current_unix_time;

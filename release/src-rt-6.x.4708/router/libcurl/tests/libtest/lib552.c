@@ -79,35 +79,35 @@ static CURLcode test_lib552(const char *URL)
   global_init(CURL_GLOBAL_ALL);
   easy_init(curl);
 
-  easy_setopt(curl, CURLOPT_DEBUGFUNCTION, libtest_debug_cb);
-  easy_setopt(curl, CURLOPT_DEBUGDATA, &debug_config);
+  test_setopt(curl, CURLOPT_DEBUGFUNCTION, libtest_debug_cb);
+  test_setopt(curl, CURLOPT_DEBUGDATA, &debug_config);
   /* the DEBUGFUNCTION has no effect until we enable VERBOSE */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* setup repeated data string */
   for(i = 0; i < sizeof(databuf); ++i)
     databuf[i] = fill[i % sizeof(fill)];
 
   /* Post */
-  easy_setopt(curl, CURLOPT_POST, 1L);
+  test_setopt(curl, CURLOPT_POST, 1L);
 
   /* Setup read callback */
-  easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)sizeof(databuf));
-  easy_setopt(curl, CURLOPT_READFUNCTION, t552_read_cb);
+  test_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)sizeof(databuf));
+  test_setopt(curl, CURLOPT_READFUNCTION, t552_read_cb);
 
   /* Write callback */
-  easy_setopt(curl, CURLOPT_WRITEFUNCTION, t552_write_cb);
+  test_setopt(curl, CURLOPT_WRITEFUNCTION, t552_write_cb);
 
   /* Ioctl function */
-  easy_setopt(curl, CURLOPT_IOCTLFUNCTION, ioctl_callback);
+  test_setopt(curl, CURLOPT_IOCTLFUNCTION, ioctl_callback);
 
-  easy_setopt(curl, CURLOPT_PROXY, libtest_arg2);
+  test_setopt(curl, CURLOPT_PROXY, libtest_arg2);
 
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Accept any auth. But for this bug configure proxy with DIGEST, basic
      might work too, not NTLM */
-  easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+  test_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 
   result = curl_easy_perform(curl);
 

@@ -98,7 +98,7 @@ int mount_cifs_main(int argc, char *argv[])
 
 					if (*exec) {
 						chdir(mpath);
-						eval_cmdline(exec, NULL, 0, NULL);
+						system(exec);
 					}
 					run_userfile(mpath, ".autorun", mpath, 3);
 				}

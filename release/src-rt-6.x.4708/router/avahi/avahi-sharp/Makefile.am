@@ -69,7 +69,6 @@ avahi-sharp-docs.tree: $(srcdir)/en/*/*
 
 monodocdir = $(MONODOC_DIR)
 monodoc_DATA = avahi-sharp-docs.zip avahi-sharp-docs.tree avahi-sharp-docs.source
-CLEANFILES += avahi-sharp-docs.zip avahi-sharp-docs.tree
 
 endif
 

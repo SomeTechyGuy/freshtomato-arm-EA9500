@@ -2,6 +2,8 @@
 <testcase>
 <info>
 <keywords>
+HTTP
+HTTP GET
 FILE
 </keywords>
 </info>
@@ -12,7 +14,7 @@ FILE
 file
 </server>
 <name>
-Get a directory using file://
+GET a directory using file://
 </name>
 <!-- does not work on win32, see #6379 -->
 <features>

@@ -5,6 +5,7 @@
 POP3
 Clear Text
 RETR
+FAILURE
 </keywords>
 </info>
 

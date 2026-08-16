@@ -215,8 +215,11 @@ void icmp6_packet(time_t now)
 	  if (opt_sz == 0 || opt_sz > rem)
 	    return; /* Bad packet */
 	  
-	  if (p[0] == ICMP6_OPT_SOURCE_MAC)
-	    mac = print_mac(&p[2], opt_sz - 2);
+	  if (p[0] == ICMP6_OPT_SOURCE_MAC && ((opt_sz - 2) * 3 - 1 < MAXDNAME))
+	    {
+	      print_mac(daemon->namebuff, &p[2], opt_sz - 2);
+	      mac = daemon->namebuff;
+	    }
 	}
       
       if (!option_bool(OPT_QUIET_RA))
@@ -432,7 +435,7 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
       sprintf(daemon->namebuff, "/proc/sys/net/ipv6/conf/%s/mtu", mtu_name ? mtu_name : iface_name);
       if ((f = fopen(daemon->namebuff, "r")))
         {
-          if (fgets(daemon->namebuff, MAXDNAMESTR, f))
+          if (fgets(daemon->namebuff, MAXDNAME, f))
             mtu = atoi(daemon->namebuff);
           fclose(f);
         }

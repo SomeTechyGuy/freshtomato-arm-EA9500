@@ -73,6 +73,10 @@ int main(void)
 }
 ~~~
 
+# NOTES
+
+Requires the libssh2 backend.
+
 # %AVAILABILITY%
 
 # RETURN VALUE

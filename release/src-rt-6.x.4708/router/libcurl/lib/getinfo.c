@@ -67,8 +67,11 @@ void Curl_initinfo(struct Curl_easy *data)
   info->httpauthpicked = 0;
   info->numconnects = 0;
 
-  curlx_safefree(info->contenttype);
-  curlx_safefree(info->wouldredirect);
+  curlx_free(info->contenttype);
+  info->contenttype = NULL;
+
+  curlx_free(info->wouldredirect);
+  info->wouldredirect = NULL;
 
   memset(&info->primary, 0, sizeof(info->primary));
   info->retry_after = 0;

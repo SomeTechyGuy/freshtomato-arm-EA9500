@@ -29,8 +29,7 @@
 #include "signkey.h"
 #include "buffer.h"
 #include "auth.h"
-#include "forward.h"
-#include "dbhelpers.h"
+#include "tcpfwd.h"
 
 typedef struct runopts {
 
@@ -42,12 +41,12 @@ typedef struct runopts {
 	unsigned int recv_window;
 	long keepalive_secs; /* Time between sending keepalives. 0 is off */
 	long idle_timeout_secs; /* Exit if no traffic is sent/received in this time */
-	long max_duration_secs; /* Exit after this time */
 	int usingsyslog;
 
 #ifndef DISABLE_ZLIB
-	/* whether compression should be advertised */
-	int compression;
+	/* Whether any compression is allowed. The specific method used
+	 * varies between client and server, it will be set up by kex_setup_compress() */
+	int allow_compress;
 #endif
 
 #if DROPBEAR_USER_ALGO_LIST
@@ -107,8 +106,8 @@ typedef struct svr_runopts {
 	int multiauthmethod;
 	unsigned int maxauthtries;
 
-#if DROPBEAR_SVR_REMOTEANYFWD
-	int noremotefwd;
+#if DROPBEAR_SVR_REMOTETCPFWD
+	int noremotetcp;
 #endif
 #if DROPBEAR_SVR_LOCALANYFWD
 	int nolocaltcp;
@@ -215,7 +214,6 @@ void cli_getopts(int argc, char ** argv);
 #if DROPBEAR_USER_ALGO_LIST
 void parse_ciphers_macs(void);
 #endif
-void print_algos(const char* algo) ATTRIB_NORETURN;
 
 void print_version(void);
 void parse_recv_window(const char* recv_window_arg);
@@ -228,6 +226,5 @@ void loadidentityfile(const char* filename, int warnfail);
 #if DROPBEAR_USE_SSH_CONFIG
 void read_config_file(char* filename, FILE* config_file, cli_runopts* options);
 #endif
-
 
 #endif /* DROPBEAR_RUNOPTS_H_ */

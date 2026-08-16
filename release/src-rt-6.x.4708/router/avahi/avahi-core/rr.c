@@ -32,7 +32,6 @@
 #include <avahi-common/malloc.h>
 #include <avahi-common/defs.h>
 
-#include "dns.h"
 #include "rr.h"
 #include "log.h"
 #include "util.h"
@@ -427,7 +426,6 @@ AvahiRecord *avahi_record_copy(AvahiRecord *r) {
     copy->ref = 1;
     copy->key = avahi_key_ref(r->key);
     copy->ttl = r->ttl;
-    memset(&copy->data, 0, sizeof(copy->data));
 
     switch (r->key->type) {
         case AVAHI_DNS_TYPE_PTR:
@@ -468,7 +466,7 @@ AvahiRecord *avahi_record_copy(AvahiRecord *r) {
             break;
 
         default:
-            if (r->data.generic.size && !(copy->data.generic.data = avahi_memdup(r->data.generic.data, r->data.generic.size)))
+            if (!(copy->data.generic.data = avahi_memdup(r->data.generic.data, r->data.generic.size)))
                 goto fail;
             copy->data.generic.size = r->data.generic.size;
             break;
@@ -547,7 +545,7 @@ static int lexicographical_memcmp(const void* a, size_t al, const void* b, size_
     if (al == bl)
         return 0;
     else
-        return al == c ? -1 : 1;
+        return al == c ? 1 : -1;
 }
 
 static int uint16_cmp(uint16_t a, uint16_t b) {
@@ -640,23 +638,9 @@ int avahi_record_lexicographical_compare(AvahiRecord *a, AvahiRecord *b) {
         case AVAHI_DNS_TYPE_AAAA:
             return memcmp(&a->data.aaaa.address, &b->data.aaaa.address, sizeof(AvahiIPv6Address));
 
-        default: {
-            size_t asize, bsize;
-
-            asize = a->data.generic.size;
-            bsize = b->data.generic.size;
-
-            if (asize && bsize)
-                r = lexicographical_memcmp(a->data.generic.data, asize, b->data.generic.data, bsize);
-            else if (asize && !bsize)
-                r = 1;
-            else if (!asize && bsize)
-                r = -1;
-            else
-                r = 0;
-
-            return r;
-        }
+        default:
+            return lexicographical_memcmp(a->data.generic.data, a->data.generic.size,
+                                          b->data.generic.data, b->data.generic.size);
     }
 
 
@@ -704,16 +688,10 @@ int avahi_record_is_valid(AvahiRecord *r) {
         case AVAHI_DNS_TYPE_TXT: {
 
             AvahiStringList *strlst;
-            size_t used = 0;
 
-            for (strlst = r->data.txt.string_list; strlst; strlst = strlst->next) {
+            for (strlst = r->data.txt.string_list; strlst; strlst = strlst->next)
                 if (strlst->size > 255 || strlst->size <= 0)
                     return 0;
-
-                used += 1+strlst->size;
-                if (used > AVAHI_DNS_RDATA_MAX)
-                    return 0;
-            }
 
             return 1;
         }

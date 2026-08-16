@@ -8,18 +8,17 @@ msgstr ""
 "Project-Id-Version: Avahi\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-10-10 13:24+0200\n"
-"PO-Revision-Date: 2023-04-06 16:34+0300\n"
-"Last-Translator: Aleksandr Melman <Alexmelman88@gmail.com>\n"
+"PO-Revision-Date: 2010-11-29 23:19+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian (http://www.transifex.com/lennart/avahi/language/"
 "ru/)\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
-"(n%100>=11 && n%100<=14)? 2 : 3);\n"
-"X-Generator: Poedit 3.2.2\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
+"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
+"%100>=11 && n%100<=14)? 2 : 3);\n"
 
 #: ../avahi-common/error.c:30
 msgid "OK"
@@ -27,11 +26,11 @@ msgstr "ОК"
 
 #: ../avahi-common/error.c:31
 msgid "Operation failed"
-msgstr "Сбой выполнения операции"
+msgstr "Сбой операции"
 
 #: ../avahi-common/error.c:32
 msgid "Bad state"
-msgstr "Плохое состояние"
+msgstr "Неверное состояние"
 
 #: ../avahi-common/error.c:33
 msgid "Invalid host name"
@@ -115,7 +114,7 @@ msgstr "Неожиданная ошибка D-Bus"
 
 #: ../avahi-common/error.c:55
 msgid "Daemon connection failed"
-msgstr "Не удалось соединиться с демоном"
+msgstr "Не удалось соединиться со службой"
 
 #: ../avahi-common/error.c:56
 msgid "Memory exhausted"
@@ -127,7 +126,7 @@ msgstr "Переданный объект недействителен"
 
 #: ../avahi-common/error.c:58
 msgid "Daemon not running"
-msgstr "Демон не запущен"
+msgstr "Служба не запущена"
 
 #: ../avahi-common/error.c:59
 msgid "Invalid interface index"
@@ -280,7 +279,7 @@ msgstr "Имя службы:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:230
 msgid "Domain Name:"
-msgstr "Имя домена:"
+msgstr "Название домена:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:231
 msgid "Interface:"
@@ -453,12 +452,14 @@ msgstr "Поиск..."
 
 #: ../avahi-ui/avahi-ui.c:1047 ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156
 #: ../avahi-ui/bssh.c:161
+#, fuzzy
 msgid "_Cancel"
-msgstr "_Отменить"
+msgstr "Отменено.\n"
 
 #: ../avahi-ui/avahi-ui.c:1048
+#, fuzzy
 msgid "_OK"
-msgstr "_ОК"
+msgstr "ОК"
 
 #: ../avahi-ui/avahi-ui.c:1134
 msgid "Initializing..."
@@ -510,7 +511,7 @@ msgstr "Выберите сервер оболочки"
 
 #: ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156 ../avahi-ui/bssh.c:161
 msgid "C_onnect"
-msgstr "П_одключиться"
+msgstr ""
 
 #: ../avahi-ui/bssh.c:151
 msgid "Desktop"
@@ -577,7 +578,7 @@ msgstr "Не удалось преобразовать службу «%s» ти�
 #: ../avahi-utils/avahi-browse.c:340
 #, c-format
 msgid "service_browser failed: %s\n"
-msgstr "Сбой выполнения service_browser: %s\n"
+msgstr "Ошибка в service_browser: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:378
 #, c-format
@@ -587,7 +588,7 @@ msgstr "Сбой выполнения avahi_service_browser_new(): %s\n"
 #: ../avahi-utils/avahi-browse.c:414
 #, c-format
 msgid "service_type_browser failed: %s\n"
-msgstr "Сбой выполнения service_type_browser: %s\n"
+msgstr "Ошибка в service_type_browser: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:444
 #, c-format
@@ -774,7 +775,8 @@ msgstr ""
 "    -H --host=ДОМЕН      Узел, на котором размещается служба\n"
 "       --subtype=ПОДТИП  Дополнительный подтип для регистрации этой службы\n"
 "    -R --no-reverse      Не опубликовывать элемент обратного адреса\n"
-"    -f --no-fail         Не завершать работу, если демон недоступен\n"
+"    -f --no-fail         Не завершать работу, если процесс службы "
+"недоступен\n"
 
 #: ../avahi-utils/avahi-publish.c:303 ../avahi-utils/avahi-publish.c:318
 #, c-format
@@ -784,7 +786,7 @@ msgstr "Неверное количество аргументов\n"
 #: ../avahi-utils/avahi-publish.c:329
 #, c-format
 msgid "Failed to parse port number: %s\n"
-msgstr "Не удалось разобрать номер порта: %s\n"
+msgstr "Ошибка разбора номера порта: %s\n"
 
 #: ../avahi-utils/avahi-publish.c:361 ../avahi-utils/avahi-resolve.c:246
 #, c-format

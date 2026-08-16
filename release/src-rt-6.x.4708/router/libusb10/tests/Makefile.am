@@ -1,15 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/libusb
 LDADD = ../libusb/libusb-1.0.la
-
-if OS_HAIKU
-# Haiku backend includes C++ objects and some toolchains do not ship
-# static libstdc++. Keep tests dynamically linked to avoid static link failures.
-test_static_link_flag =
-else
-test_static_link_flag = -static
-endif
-
-AM_LDFLAGS = $(test_static_link_flag)
+AM_LDFLAGS = -static
 
 stress_SOURCES = stress.c testlib.c
 stress_mt_SOURCES = stress_mt.c

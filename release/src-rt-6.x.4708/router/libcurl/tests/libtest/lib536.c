@@ -37,7 +37,7 @@ static CURLcode test_lib536(const char *URL)
   CURL *curl;
   struct curl_slist *host = NULL;
 
-  static const char *url_with_proxy = "http://usingproxy.test/";
+  static const char *url_with_proxy = "http://usingproxy.com/";
   const char *url_without_proxy = libtest_arg2;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
@@ -56,16 +56,16 @@ static CURLcode test_lib536(const char *URL)
   if(!host)
     goto test_cleanup;
 
-  easy_setopt(curl, CURLOPT_RESOLVE, host);
-  easy_setopt(curl, CURLOPT_PROXY, URL);
-  easy_setopt(curl, CURLOPT_URL, url_with_proxy);
-  easy_setopt(curl, CURLOPT_NOPROXY, "goingdirect.test");
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_RESOLVE, host);
+  test_setopt(curl, CURLOPT_PROXY, URL);
+  test_setopt(curl, CURLOPT_URL, url_with_proxy);
+  test_setopt(curl, CURLOPT_NOPROXY, "goingdirect.com");
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   result = curl_easy_perform(curl);
   if(!result) {
     proxystat(curl);
-    easy_setopt(curl, CURLOPT_URL, url_without_proxy);
+    test_setopt(curl, CURLOPT_URL, url_without_proxy);
     result = curl_easy_perform(curl);
     if(!result)
       proxystat(curl);

@@ -31,16 +31,15 @@
 #include <winsock2.h>
 #include <winerror.h>
 #include <ws2tcpip.h>
-#ifndef _WIN32_WINNT
-/* For structs needed by GetAdaptersAddresses and AI_NUMERICSERV */
-#define _WIN32_WINNT 0x0600
-#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
 #include <io.h>
 #include <tchar.h>
 #include <process.h>
+#undef _WIN32_WINNT
+/* For structs needed by GetAdaptersAddresses */
+#define _WIN32_WINNT 0x0501
 #include <iphlpapi.h>
 #include <netioapi.h>
 #endif
@@ -211,7 +210,7 @@ evutil_socketpair(int family, int type, int protocol, evutil_socket_t fd[2])
 
 int
 evutil_ersatz_socketpair_(int family, int type, int protocol,
-    evutil_socket_t fd[])
+    evutil_socket_t fd[2])
 {
 	/* This code is originally from Tor.  Used with permission. */
 
@@ -1994,8 +1993,7 @@ evutil_inet_pton_scope(int af, const char *src, void *dst, unsigned *indexp)
 {
 	int r;
 	unsigned if_index;
-	char *check, *tmp_src;
-	const char *scope;
+	char *check, *cp, *tmp_src;
 
 	*indexp = 0; /* Reasonable default */
 
@@ -2003,25 +2001,25 @@ evutil_inet_pton_scope(int af, const char *src, void *dst, unsigned *indexp)
 	if (af != AF_INET6)
 		return evutil_inet_pton(af, src, dst);
 
-	scope = strchr(src, '%');
+	cp = strchr(src, '%');
 
 	/* Bail out if no zone ID */
-	if (scope == NULL)
+	if (cp == NULL)
 		return evutil_inet_pton(af, src, dst);
 
-	if_index = if_nametoindex(scope + 1);
+	if_index = if_nametoindex(cp + 1);
 	if (if_index == 0) {
-		if_index = strtoul(scope + 1, &check, 10);
+		/* Could be numeric */
+		if_index = strtoul(cp + 1, &check, 10);
 		if (check[0] != '\0')
 			return 0;
 	}
 	*indexp = if_index;
-	if (!(tmp_src = mm_strdup(src))) {
-		return -1;
-	}
-	tmp_src[scope - src] = '\0';
+	tmp_src = mm_strdup(src);
+	cp = strchr(tmp_src, '%');
+	*cp = '\0';
 	r = evutil_inet_pton(af, tmp_src, dst);
-	mm_free(tmp_src);
+	free(tmp_src);
 	return r;
 }
 
@@ -2533,7 +2531,7 @@ evutil_memclear_(void *mem, size_t len)
 int
 evutil_sockaddr_is_loopback_(const struct sockaddr *addr)
 {
-	EVUTIL_NONSTRING static const char LOOPBACK_S6[16] =
+	static const char LOOPBACK_S6[16] =
 	    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1";
 	if (addr->sa_family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)addr;

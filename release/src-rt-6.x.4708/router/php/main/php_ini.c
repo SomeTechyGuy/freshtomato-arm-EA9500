@@ -40,7 +40,7 @@
 		char *tmp = path; \
 		while (*tmp) { \
 			if (*tmp == '\\') *tmp = '/'; \
-			else *tmp = tolower((unsigned char)*tmp); \
+			else *tmp = tolower(*tmp); \
 				tmp++; \
 		} \
 	}

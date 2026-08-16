@@ -28,7 +28,6 @@
 #include "urldata.h"
 #include "cfilters.h"
 #include "cf-haproxy.h"
-#include "connect.h"
 #include "curl_addrinfo.h"
 #include "curl_trc.h"
 #include "select.h"
@@ -44,6 +43,13 @@ struct cf_haproxy_ctx {
   int state;
   struct dynbuf data_out;
 };
+
+static void cf_haproxy_ctx_reset(struct cf_haproxy_ctx *ctx)
+{
+  DEBUGASSERT(ctx);
+  ctx->state = HAPROXY_INIT;
+  curlx_dyn_reset(&ctx->data_out);
+}
 
 static void cf_haproxy_ctx_free(struct cf_haproxy_ctx *ctx)
 {
@@ -72,7 +78,7 @@ static CURLcode cf_haproxy_date_out_set(struct Curl_cfilter *cf,
   DEBUGASSERT(ctx);
   DEBUGASSERT(ctx->state == HAPROXY_INIT);
 #ifdef USE_UNIX_SOCKETS
-  if(Curl_conn_get_first_peer(cf->conn, cf->sockindex)->unix_socket)
+  if(cf->conn->unix_domain_socket)
     /* the buffer is large enough to hold this! */
     result = curlx_dyn_addn(&ctx->data_out, STRCONST("PROXY UNKNOWN\r\n"));
   else {
@@ -91,7 +97,7 @@ static CURLcode cf_haproxy_date_out_set(struct Curl_cfilter *cf,
     client_dest_ip = ipquad.remote_ip;
   }
 
-  result = curlx_dyn_addf(&ctx->data_out, "PROXY %s %s %s %d %d\r\n",
+  result = curlx_dyn_addf(&ctx->data_out, "PROXY %s %s %s %i %i\r\n",
                           is_ipv6 ? "TCP6" : "TCP4",
                           client_source_ip, client_dest_ip,
                           ipquad.local_port, ipquad.remote_port);
@@ -166,6 +172,16 @@ static void cf_haproxy_destroy(struct Curl_cfilter *cf,
   cf_haproxy_ctx_free(cf->ctx);
 }
 
+static void cf_haproxy_close(struct Curl_cfilter *cf,
+                             struct Curl_easy *data)
+{
+  CURL_TRC_CF(data, cf, "close");
+  cf->connected = FALSE;
+  cf_haproxy_ctx_reset(cf->ctx);
+  if(cf->next)
+    cf->next->cft->do_close(cf->next, data);
+}
+
 static CURLcode cf_haproxy_adjust_pollset(struct Curl_cfilter *cf,
                                           struct Curl_easy *data,
                                           struct easy_pollset *ps)
@@ -185,6 +201,7 @@ struct Curl_cftype Curl_cft_haproxy = {
   0,
   cf_haproxy_destroy,
   cf_haproxy_connect,
+  cf_haproxy_close,
   Curl_cf_def_shutdown,
   cf_haproxy_adjust_pollset,
   Curl_cf_def_data_pending,

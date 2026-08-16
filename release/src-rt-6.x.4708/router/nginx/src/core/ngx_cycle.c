@@ -114,13 +114,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_cpystrn(cycle->conf_file.data, old_cycle->conf_file.data,
                 old_cycle->conf_file.len + 1);
 
-    if (old_cycle->conf_param.len) {
-        cycle->conf_param.len = old_cycle->conf_param.len;
-        cycle->conf_param.data = ngx_pstrdup(pool, &old_cycle->conf_param);
-        if (cycle->conf_param.data == NULL) {
-            ngx_destroy_pool(pool);
-            return NULL;
-        }
+    cycle->conf_param.len = old_cycle->conf_param.len;
+    cycle->conf_param.data = ngx_pstrdup(pool, &old_cycle->conf_param);
+    if (cycle->conf_param.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
     }
 
 

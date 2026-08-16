@@ -58,7 +58,7 @@ lib%TESTNUMBER
 proxy
 </features>
 <name>
-http:// through proxytunnel
+simple multi http:// through proxytunnel with authentication info
 </name>
 <command>
 http://the.old.moo.%TESTNUMBER:%HTTPPORT/%TESTNUMBER %HOSTIP:%PROXYPORT

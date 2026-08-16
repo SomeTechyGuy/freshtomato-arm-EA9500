@@ -49,11 +49,11 @@ writeRandomBytes_dev_urandom(void *target, size_t count) {
 
   const int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
-    return false;
+    return 0;
   }
 
   do {
-    void *const currentTarget = (char *)target + bytesWrittenTotal;
+    void *const currentTarget = (void *)((char *)target + bytesWrittenTotal);
     const size_t bytesToWrite = count - bytesWrittenTotal;
 
     errno = 0;

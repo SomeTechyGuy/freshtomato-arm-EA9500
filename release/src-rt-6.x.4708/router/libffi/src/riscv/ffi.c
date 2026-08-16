@@ -29,23 +29,16 @@
 
 #include <ffi.h>
 #include <ffi_common.h>
-#include "internal.h"
-#include <tramp.h>
 
 #include <stdlib.h>
 #include <stdint.h>
 
 #if __riscv_float_abi_double
 #define ABI_FLEN 64
-typedef union {
-    uint64_t i;
-    double d;
-} float_reg;
+#define ABI_FLOAT double
 #elif __riscv_float_abi_single
 #define ABI_FLEN 32
-typedef union {
-    float f;
-} float_reg;
+#define ABI_FLOAT float
 #endif
 
 #define NARGREG 8
@@ -55,7 +48,7 @@ typedef union {
 typedef struct call_context
 {
 #if ABI_FLEN
-    float_reg fa[8];
+    ABI_FLOAT fa[8];
 #endif
     size_t a[8];
     /* used by the assembly code to in-place construct its own stack frame */
@@ -134,30 +127,6 @@ static float_struct_info struct_passed_as_elements(call_builder *cb, ffi_type *t
 
     return ret;
 }
-
-#if ABI_FLEN >= 64
-/* Float values in wider RISC-V FP registers are NaN-boxed */
-static void marshal_float(call_builder *cb, void *data) {
-    union {
-        uint32_t i;
-        float f;
-    } value;
-
-    value.f = *(float *)data;
-    cb->aregs->fa[cb->used_float++].i =
-        UINT64_C(0xffffffff00000000) | value.i;
-}
-
-static void unmarshal_float(call_builder *cb, void *data) {
-    union {
-        uint32_t i;
-        float f;
-    } value;
-
-    value.i = (uint32_t)cb->aregs->fa[cb->used_float++].i;
-    *(float *)data = value.f;
-}
-#endif
 #endif
 
 /* allocates a single register, float register, or XLEN-sized stack slot to a datum */
@@ -177,18 +146,17 @@ static void marshal_atom(call_builder *cb, int type, void *data) {
 #endif
         case FFI_TYPE_POINTER: value = *(size_t *)data; break;
 
-#if ABI_FLEN >= 64
+        /* float values may be recoded in an implementation-defined way
+           by hardware conforming to 2.1 or earlier, so use asm to
+           reinterpret floats as doubles */
+#if ABI_FLEN >= 32
         case FFI_TYPE_FLOAT:
-            marshal_float(cb, data);
-            return;
-#elif ABI_FLEN >= 32
-        case FFI_TYPE_FLOAT:
-            __asm__("" : "=f"(cb->aregs->fa[cb->used_float++].f) : "0"(*(float *)data));
+            asm("" : "=f"(cb->aregs->fa[cb->used_float++]) : "0"(*(float *)data));
             return;
 #endif
 #if ABI_FLEN >= 64
         case FFI_TYPE_DOUBLE:
-            __asm__("" : "=f"(cb->aregs->fa[cb->used_float++].d) : "0"(*(double *)data));
+            asm("" : "=f"(cb->aregs->fa[cb->used_float++]) : "0"(*(double *)data));
             return;
 #endif
         default: FFI_ASSERT(0); break;
@@ -204,18 +172,14 @@ static void marshal_atom(call_builder *cb, int type, void *data) {
 static void unmarshal_atom(call_builder *cb, int type, void *data) {
     size_t value;
     switch (type) {
-#if ABI_FLEN >= 64
+#if ABI_FLEN >= 32
         case FFI_TYPE_FLOAT:
-            unmarshal_float(cb, data);
-            return;
-#elif ABI_FLEN >= 32
-        case FFI_TYPE_FLOAT:
-            __asm__("" : "=f"(*(float *)data) : "0"(cb->aregs->fa[cb->used_float++].f));
+            asm("" : "=f"(*(float *)data) : "0"(cb->aregs->fa[cb->used_float++]));
             return;
 #endif
 #if ABI_FLEN >= 64
         case FFI_TYPE_DOUBLE:
-            __asm__("" : "=f"(*(double *)data) : "0"(cb->aregs->fa[cb->used_float++].d));
+            asm("" : "=f"(*(double *)data) : "0"(cb->aregs->fa[cb->used_float++]));
             return;
 #endif
     }
@@ -460,43 +424,33 @@ extern void ffi_closure_asm(void) FFI_HIDDEN;
 
 ffi_status ffi_prep_closure_loc(ffi_closure *closure, ffi_cif *cif, void (*fun)(ffi_cif*,void*,void**,void*), void *user_data, void *codeloc)
 {
+    uint32_t *tramp = (uint32_t *) &closure->tramp[0];
+    uint64_t fn = (uint64_t) (uintptr_t) ffi_closure_asm;
+
     if (cif->abi <= FFI_FIRST_ABI || cif->abi >= FFI_LAST_ABI)
         return FFI_BAD_ABI;
 
-#ifdef FFI_EXEC_STATIC_TRAMP
-  if (ffi_tramp_is_present (closure))
-    {
-      /* Initialize the static trampoline's parameters. */
-      void (*dest)(void) = ffi_closure_asm;
-      ffi_tramp_set_parms (closure->ftramp, dest, closure);
-    }
-  else
-#endif
-    {
-      uint32_t *tramp = (uint32_t *) &closure->tramp[0];
-      uint64_t fn = (uint64_t) (uintptr_t) ffi_closure_asm;
+    /* we will call ffi_closure_inner with codeloc, not closure, but as long
+       as the memory is readable it should work */
 
-      /* we will call ffi_closure_inner with codeloc, not closure, but as long
-	 as the memory is readable it should work */
-
-      tramp[0] = 0x00000317; /* auipc t1, 0 (i.e. t0 <- codeloc) */
+    tramp[0] = 0x00000317; /* auipc t1, 0 (i.e. t0 <- codeloc) */
 #if __SIZEOF_POINTER__ == 8
-      tramp[1] = 0x01033383; /* ld t2, 16(t1) */
+    tramp[1] = 0x01033383; /* ld t2, 16(t1) */
 #else
-      tramp[1] = 0x01032383; /* lw t2, 16(t1) */
+    tramp[1] = 0x01032383; /* lw t2, 16(t1) */
 #endif
-      tramp[2] = 0x00038067; /* jr t2 */
-      tramp[3] = 0x00000013; /* nop */
-      tramp[4] = fn;
-      tramp[5] = fn >> 32;
-#if !defined(__FreeBSD__)
-    __builtin___clear_cache(codeloc, codeloc + FFI_TRAMPOLINE_SIZE);
-#endif
-    }
+    tramp[2] = 0x00038067; /* jr t2 */
+    tramp[3] = 0x00000013; /* nop */
+    tramp[4] = fn;
+    tramp[5] = fn >> 32;
 
     closure->cif = cif;
     closure->fun = fun;
     closure->user_data = user_data;
+
+#if !defined(__FreeBSD__)
+    __builtin___clear_cache(codeloc, codeloc + FFI_TRAMPOLINE_SIZE);
+#endif
 
     return FFI_OK;
 }
@@ -558,14 +512,3 @@ ffi_closure_inner (ffi_cif *cif,
         marshal(&cb, cif->rtype, 0, rvalue);
     }
 }
-
-#ifdef FFI_EXEC_STATIC_TRAMP
-void *
-ffi_tramp_arch (size_t *tramp_size, size_t *map_size)
-{
-  extern void *trampoline_code_table;
-  *tramp_size = RISCV_TRAMP_SIZE;
-  *map_size = RISCV_TRAMP_MAP_SIZE;
-  return &trampoline_code_table;
-}
-#endif

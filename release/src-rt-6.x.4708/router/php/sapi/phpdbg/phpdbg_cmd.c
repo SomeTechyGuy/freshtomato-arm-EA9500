@@ -783,9 +783,9 @@ PHPDBG_API char *phpdbg_read_input(const char *buffered) /* {{{ */
 		}
 	}
 
-	if (buffer && isspace((unsigned char)*buffer)) {
+	if (buffer && isspace(*buffer)) {
 		char *trimmed = buffer;
-		while (isspace((unsigned char)*trimmed))
+		while (isspace(*trimmed))
 			trimmed++;
 
 		trimmed = estrdup(trimmed);

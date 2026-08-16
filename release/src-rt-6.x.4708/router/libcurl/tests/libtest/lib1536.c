@@ -42,7 +42,7 @@ static CURLcode test_lib1536(const char *URL)
   if(result) {
     curl_mfprintf(stderr,
                   "%s:%d curl_easy_getinfo() failed with code %d (%s)\n",
-                  __FILE__, __LINE__, (int)result, curl_easy_strerror(result));
+                  __FILE__, __LINE__, result, curl_easy_strerror(result));
     goto test_cleanup;
   }
   if(scheme) {
@@ -59,7 +59,7 @@ static CURLcode test_lib1536(const char *URL)
   if(result) {
     curl_mfprintf(stderr,
                   "%s:%d curl_easy_perform() failed with code %d (%s)\n",
-                  __FILE__, __LINE__, (int)result, curl_easy_strerror(result));
+                  __FILE__, __LINE__, result, curl_easy_strerror(result));
     goto test_cleanup;
   }
 
@@ -70,13 +70,14 @@ static CURLcode test_lib1536(const char *URL)
   if(result) {
     curl_mfprintf(stderr,
                   "%s:%d curl_easy_getinfo() failed with code %d (%s)\n",
-                  __FILE__, __LINE__, (int)result, curl_easy_strerror(result));
+                  __FILE__, __LINE__, result, curl_easy_strerror(result));
     goto test_cleanup;
   }
-  if(!scheme || memcmp(scheme, "http", 5)) {
+  if(!scheme || memcmp(scheme, "http", 5) != 0) {
     curl_mfprintf(stderr, "%s:%d scheme of http resource is incorrect; "
                   "expected 'http' but is %s\n",
-                  __FILE__, __LINE__, scheme ? "invalid" : "NULL");
+                  __FILE__, __LINE__,
+                  (scheme == NULL ? "NULL" : "invalid"));
     result = CURLE_HTTP_RETURNED_ERROR;
     goto test_cleanup;
   }
@@ -96,7 +97,7 @@ static CURLcode test_lib1536(const char *URL)
   if(result) {
     curl_mfprintf(stderr,
                   "%s:%d curl_easy_getinfo() failed with code %d (%s)\n",
-                  __FILE__, __LINE__, (int)result, curl_easy_strerror(result));
+                  __FILE__, __LINE__, result, curl_easy_strerror(result));
     goto test_cleanup;
   }
   if(scheme) {
@@ -115,7 +116,7 @@ static CURLcode test_lib1536(const char *URL)
   if(result) {
     curl_mfprintf(stderr,
                   "%s:%d curl_easy_getinfo() failed with code %d (%s)\n",
-                  __FILE__, __LINE__, (int)result, curl_easy_strerror(result));
+                  __FILE__, __LINE__, result, curl_easy_strerror(result));
     goto test_cleanup;
   }
   if(scheme) {

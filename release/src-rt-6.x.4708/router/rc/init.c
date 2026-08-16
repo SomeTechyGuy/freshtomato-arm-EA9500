@@ -179,7 +179,7 @@ static void set_defaults(struct nvram_tuple *t, char *strprefix)
 void wl_defaults(void)
 {
 	struct nvram_tuple *t;
-	char prefix[]="wlXXXXXXXXXX_", tmp[100], tmp2[100];
+	char prefix[]="wlXXXXXX_", tmp[100], tmp2[100];
 	char word[256], *next;
 	int unit;
 	char wlx_vifnames[64], wl_vifnames[64], lan_ifnames[128];
@@ -11816,7 +11816,7 @@ static void sysinit(void)
 
 	stime(&tm);
 
-	static const char *mkd[] = { "/tmp/etc", "/tmp/var", "/tmp/home", "/tmp/mnt", "/tmp/splashd", "/tmp/httpd",
+	static const char *mkd[] = { "/tmp/etc", "/tmp/var", "/tmp/home", "/tmp/mnt", "/tmp/splashd",
 	                             "/tmp/share", "/tmp/var/wwwext", "/tmp/var/wwwext/cgi-bin",
 	                             "/var/webmon", "/var/log", "/var/run", "/var/tmp", "/var/lib", "/var/lib/misc",
 	                             "/var/spool", "/var/spool/cron", "/var/spool/cron/crontabs",
@@ -11844,8 +11844,8 @@ static void sysinit(void)
 			if (de->d_name[0] == '.')
 				continue;
 
-			snprintf(s, sizeof(s), "/rom/etc/%.246s", de->d_name);
-			snprintf(t, sizeof(t), "/etc/%.250s", de->d_name);
+			snprintf(s, sizeof(s), "%s/%s", "/rom/etc", de->d_name);
+			snprintf(t, sizeof(t), "%s/%s", "/etc", de->d_name);
 			symlink(s, t);
 		}
 		closedir(d);
@@ -11858,8 +11858,8 @@ static void sysinit(void)
 			if (de->d_name[0] == '.')
 				continue;
 
-			snprintf(s, sizeof(s), "/usr/codepages/%.240s", de->d_name);
-			snprintf(t, sizeof(t), "/usr/share/%.244s", de->d_name);
+			snprintf(s, sizeof(s), "/usr/codepages/%s", de->d_name);
+			snprintf(t, sizeof(t), "/usr/share/%s", de->d_name);
 			symlink(s, t);
 		}
 		closedir(d);
@@ -12054,7 +12054,7 @@ int init_main(int argc, char *argv[])
 
 	/* set unique system id */
 	if (!f_exists("/etc/machine-id"))
-		eval("/bin/sh", "-c", "printf '%s\n' \"$(nvram get lan_hwaddr)\" | md5sum | cut -b -32 > /etc/machine-id");
+		system("echo $(nvram get lan_hwaddr) | md5sum | cut -b -32 > /etc/machine-id");
 
 	state = SIGUSR2; /* START */
 

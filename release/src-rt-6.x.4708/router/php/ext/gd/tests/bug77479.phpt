@@ -4,7 +4,6 @@ Bug #77479 (imagewbmp() segfaults with very large image)
 gd
 --SKIPIF--
 <?php
-if (!getenv('RUN_RESOURCE_HEAVY_TESTS')) die('skip resource-heavy test');
 if (getenv("SKIP_SLOW_TESTS")) die("skip slow test");
 ?>
 --INI--

@@ -100,9 +100,6 @@ static size_t num_sockets = 0;
 #define REQUEST_PROXY_DUMP  "proxy.input"
 #define RESPONSE_PROXY_DUMP "proxy.response"
 
-#define REQUEST_DUMP_FILENAME \
-  (is_proxy ? REQUEST_PROXY_DUMP : REQUEST_DUMP)
-
 /* file in which additional instructions may be found */
 static const char *cmdfile = "log/server.cmd";
 
@@ -115,14 +112,14 @@ static const char *cmdfile = "log/server.cmd";
 
 #define CMD_AUTH_REQUIRED "auth_required"
 
-/* 'idle' means that it accepts the request fine but never responds
-   any data. Keep the connection alive. */
+/* 'idle' means that it will accept the request fine but never respond
+   any data. Just keep the connection alive. */
 #define CMD_IDLE "idle"
 
 /* 'stream' means to send a never-ending stream of data */
 #define CMD_STREAM "stream"
 
-/* 'connection-monitor' outputs when a server/proxy connection gets
+/* 'connection-monitor' will output when a server/proxy connection gets
    disconnected as for some cases it is important that it gets done at the
    proper point - like with NTLM */
 #define CMD_CONNECTIONMONITOR "connection-monitor"
@@ -198,10 +195,10 @@ static bool socket_domain_is_ip(void)
 #ifdef USE_IPV6
   case AF_INET6:
 #endif
-    return TRUE;
+    return true;
   default:
     /* case AF_UNIX: */
-    return FALSE;
+    return false;
   }
 }
 #endif
@@ -307,7 +304,7 @@ static int sws_parse_servercmd(struct sws_httprequest *req)
       else {
         logmsg("Unknown <servercmd> instruction found: %s", cmd);
       }
-      /* try to deal with CRLF or LF */
+      /* try to deal with CRLF or just LF */
       check = strchr(cmd, '\r');
       if(!check)
         check = strchr(cmd, '\n');
@@ -588,7 +585,7 @@ static int sws_ProcessRequest(struct sws_httprequest *req)
     if((req->cl == 0) && !CURL_STRNICMP("Content-Length:", line, 15)) {
       /* If we do not ignore content-length, we read it and we read the whole
          request including the body before we return. If we have been told to
-         ignore the content-length, we return as soon as all headers
+         ignore the content-length, we will return as soon as all headers
          have been received */
       curl_off_t clen;
       const char *p = line + strlen("Content-Length:");
@@ -605,7 +602,7 @@ static int sws_ProcessRequest(struct sws_httprequest *req)
 
       logmsg("Found Content-Length: %zu in the request", (size_t)clen);
       if(req->skip)
-        logmsg("... but going to abort after %zu bytes", req->cl);
+        logmsg("... but will abort after %zu bytes", req->cl);
     }
     else if(!CURL_STRNICMP("Transfer-Encoding: chunked", line,
                            strlen("Transfer-Encoding: chunked"))) {
@@ -742,6 +739,64 @@ static int sws_ProcessRequest(struct sws_httprequest *req)
   return 1; /* done */
 }
 
+/* store the entire request in a file */
+static void sws_storerequest(const char *reqbuf, size_t totalsize)
+{
+  int res;
+  int error = 0;
+  char errbuf[STRERROR_LEN];
+  size_t written;
+  size_t writeleft;
+  FILE *dump;
+  char dumpfile[256];
+
+  snprintf(dumpfile, sizeof(dumpfile), "%s/%s",
+           logdir, is_proxy ? REQUEST_PROXY_DUMP : REQUEST_DUMP);
+
+  if(!reqbuf)
+    return;
+  if(totalsize == 0)
+    return;
+
+  do {
+    dump = curlx_fopen(dumpfile, "ab");
+    /* !checksrc! disable ERRNOVAR 1 */
+  } while(!dump && ((error = errno) == EINTR));
+  if(!dump) {
+    logmsg("[2] Error opening file %s error (%d) %s", dumpfile,
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
+    logmsg("Failed to write request input ");
+    return;
+  }
+
+  writeleft = totalsize;
+  do {
+    written = fwrite(&reqbuf[totalsize - writeleft], 1, writeleft, dump);
+    if(got_exit_signal)
+      goto storerequest_cleanup;
+    if(written > 0)
+      writeleft -= written;
+    error = errno;
+    /* !checksrc! disable ERRNOVAR 1 */
+  } while((writeleft > 0) && (error == EINTR));
+
+  if(writeleft == 0)
+    logmsg("Wrote request (%zu bytes) input to %s", totalsize, dumpfile);
+  else if(writeleft > 0) {
+    logmsg("Error writing file %s error (%d) %s", dumpfile,
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
+    logmsg("Wrote only (%zu bytes) of (%zu bytes) request input to %s",
+           totalsize - writeleft, totalsize, dumpfile);
+  }
+
+storerequest_cleanup:
+
+  res = curlx_fclose(dump);
+  if(res)
+    logmsg("Error closing file %s error (%d) %s", dumpfile,
+           errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
+}
+
 /* returns -1 on failure */
 static int sws_send_doc(curl_socket_t sock, struct sws_httprequest *req)
 {
@@ -758,6 +813,7 @@ static int sws_send_doc(curl_socket_t sock, struct sws_httprequest *req)
   size_t responsesize;
   int error = 0;
   char errbuf[STRERROR_LEN];
+  int res;
   static char weare[256];
   char responsedump[256];
 
@@ -884,7 +940,7 @@ static int sws_send_doc(curl_socket_t sock, struct sws_httprequest *req)
   }
 
   /* If the word 'swsclose' is present anywhere in the reply chunk, the
-     connection is closed after the data has been sent to the requesting
+     connection will be closed after the data has been sent to the requesting
      client... */
   if(strstr(buffer, "swsclose") || !count || req->close) {
     persistent = FALSE;
@@ -910,8 +966,8 @@ static int sws_send_doc(curl_socket_t sock, struct sws_httprequest *req)
 
   responsesize = count;
   do {
-    /* Ok, we send no more than N bytes at a time, to make sure that
-       larger chunks are split up so that the client needs to do multiple
+    /* Ok, we send no more than N bytes at a time, just to make sure that
+       larger chunks are split up so that the client will need to do multiple
        recv() calls to get it and thus we exercise that code better */
     size_t num = count;
     if(num > 20)
@@ -920,7 +976,7 @@ static int sws_send_doc(curl_socket_t sock, struct sws_httprequest *req)
 retry:
     written = swrite(sock, buffer, num);
     if(written < 0) {
-      if(SOCK_EAGAIN(SOCKERRNO)) {
+      if((SOCKEWOULDBLOCK == SOCKERRNO) || (EAGAIN == SOCKERRNO)) {
         curlx_wait_ms(10);
         goto retry;
       }
@@ -951,7 +1007,8 @@ retry:
     }
   } while((count > 0) && !got_exit_signal);
 
-  if(curlx_fclose(dump))
+  res = curlx_fclose(dump);
+  if(res)
     logmsg("Error closing file %s error (%d) %s", responsedump,
            errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
 
@@ -988,11 +1045,12 @@ retry:
           quarters = num * 4;
           while((quarters > 0) && !got_exit_signal) {
             quarters--;
-            if(curlx_wait_ms(250)) {
+            res = curlx_wait_ms(250);
+            if(res) {
               /* should not happen */
-              int sockerr = SOCKERRNO;
+              error = SOCKERRNO;
               logmsg("curlx_wait_ms() failed with error (%d) %s",
-                     sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+                     error, curlx_strerror(error, errbuf, sizeof(errbuf)));
               break;
             }
           }
@@ -1061,7 +1119,7 @@ static int sws_get_request(curl_socket_t sock, struct sws_httprequest *req)
 
     /* dump the request received so far to the external file */
     reqbuf[req->offset] = '\0';
-    storerequest(reqbuf, req->offset, REQUEST_DUMP_FILENAME);
+    sws_storerequest(reqbuf, req->offset);
     req->offset = 0;
 
     /* read websocket traffic */
@@ -1075,7 +1133,8 @@ static int sws_get_request(curl_socket_t sock, struct sws_httprequest *req)
           logmsg("Got %zd bytes from client", got);
         }
 
-        if((got == -1) && SOCK_EAGAIN(SOCKERRNO)) {
+        if((got == -1) &&
+           ((SOCKERRNO == EAGAIN) || (SOCKERRNO == SOCKEWOULDBLOCK))) {
           int rc;
           fd_set input;
           fd_set output;
@@ -1104,7 +1163,7 @@ static int sws_get_request(curl_socket_t sock, struct sws_httprequest *req)
       logmsg("log the websocket traffic");
       /* dump the incoming websocket traffic to the external file */
       reqbuf[req->offset] = '\0';
-      storerequest(reqbuf, req->offset, REQUEST_DUMP_FILENAME);
+      sws_storerequest(reqbuf, req->offset);
       req->offset = 0;
     }
     init_httprequest(req);
@@ -1134,19 +1193,19 @@ static int sws_get_request(curl_socket_t sock, struct sws_httprequest *req)
     }
     else if(got < 0) {
       char errbuf[STRERROR_LEN];
-      int sockerr = SOCKERRNO;
-      if(SOCK_EAGAIN(sockerr)) {
+      int error = SOCKERRNO;
+      if(EAGAIN == error || SOCKEWOULDBLOCK == error) {
         /* nothing to read at the moment */
         return 0;
       }
       logmsg("recv() returned error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       fail = 1;
     }
     if(fail) {
       /* dump the request received so far to the external file */
       reqbuf[req->offset] = '\0';
-      storerequest(reqbuf, req->offset, REQUEST_DUMP_FILENAME);
+      sws_storerequest(reqbuf, req->offset);
       return -1;
     }
 
@@ -1177,7 +1236,7 @@ static int sws_get_request(curl_socket_t sock, struct sws_httprequest *req)
 
   /* at the end of a request dump it to an external file */
   if(fail || req->done_processing)
-    storerequest(reqbuf, req->offset, REQUEST_DUMP_FILENAME);
+    sws_storerequest(reqbuf, req->offset);
   if(got_exit_signal)
     return -1;
 
@@ -1188,7 +1247,7 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
 {
   srvr_sockaddr_union_t serveraddr;
   curl_socket_t serverfd;
-  int sockerr;
+  int error;
   char errbuf[STRERROR_LEN];
   int rc = 0;
   const char *op_br = "";
@@ -1208,9 +1267,9 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
 
   serverfd = socket(socket_domain, SOCK_STREAM, 0);
   if(serverfd == CURL_SOCKET_BAD) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("Error creating socket for server connection (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     return CURL_SOCKET_BAD;
   }
 
@@ -1228,9 +1287,9 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
    * Windows has an internal retry logic that may lead to long
    * timeouts if the peer is not listening. */
   if(curlx_nonblock(serverfd, TRUE)) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("curlx_nonblock(TRUE) failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(serverfd);
     return CURL_SOCKET_BAD;
   }
@@ -1275,8 +1334,8 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
   }
 
   if(rc) {
-    sockerr = SOCKERRNO;
-    if((sockerr == SOCKEINPROGRESS) || SOCK_EAGAIN(sockerr)) {
+    error = SOCKERRNO;
+    if((error == SOCKEINPROGRESS) || (error == SOCKEWOULDBLOCK)) {
       fd_set output;
       struct timeval timeout = { 0 };
       timeout.tv_sec = 1; /* 1000 ms */
@@ -1285,17 +1344,16 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
       FD_SET(serverfd, &output);
       while(1) {
         rc = select((int)serverfd + 1, NULL, &output, NULL, &timeout);
-        sockerr = SOCKERRNO;
-        if(rc < 0 && sockerr != SOCKEINTR)
+        if(rc < 0 && SOCKERRNO != SOCKEINTR)
           goto error;
         else if(rc > 0) {
-          curl_socklen_t errSize = sizeof(sockerr);
+          curl_socklen_t errSize = sizeof(error);
           if(getsockopt(serverfd, SOL_SOCKET, SO_ERROR,
-                        (void *)&sockerr, &errSize))
-            sockerr = SOCKERRNO;
-          if((sockerr == 0) || (SOCKEISCONN == sockerr))
+                        (void *)&error, &errSize))
+            error = SOCKERRNO;
+          if((error == 0) || (SOCKEISCONN == error))
             goto success;
-          else if((sockerr != SOCKEINPROGRESS) && !SOCK_EAGAIN(sockerr))
+          else if((error != SOCKEINPROGRESS) && (error != SOCKEWOULDBLOCK))
             goto error;
         }
         else if(!rc) {
@@ -1307,7 +1365,7 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
     }
 error:
     logmsg("Error connecting to server port %hu (%d) %s", port,
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(serverfd);
     return CURL_SOCKET_BAD;
   }
@@ -1316,9 +1374,9 @@ success:
          op_br, ipaddr, cl_br, port);
 
   if(curlx_nonblock(serverfd, FALSE)) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("curlx_nonblock(FALSE) failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(serverfd);
     return CURL_SOCKET_BAD;
   }
@@ -1334,7 +1392,7 @@ success:
  * either end.
  *
  * When doing FTP through a CONNECT proxy, we expect that the data connection
- * is setup while the first connect is still being kept up. Therefore we
+ * will be setup while the first connect is still being kept up. Therefore we
  * must accept a new connection and deal with it appropriately.
  */
 
@@ -1736,7 +1794,7 @@ http_connect_cleanup:
 static void http_upgrade(struct sws_httprequest *req)
 {
   (void)req;
-  logmsg("Upgraded to ... %d", (int)req->upgrade_request);
+  logmsg("Upgraded to ... %u", req->upgrade_request);
   /* left to implement */
 }
 
@@ -1745,7 +1803,7 @@ static void http_upgrade(struct sws_httprequest *req)
 static curl_socket_t accept_connection(curl_socket_t sock)
 {
   curl_socket_t msgsock = CURL_SOCKET_BAD;
-  int sockerr;
+  int error;
   char errbuf[STRERROR_LEN];
   int flag = 1;
 
@@ -1763,20 +1821,20 @@ static curl_socket_t accept_connection(curl_socket_t sock)
   }
 
   if(msgsock == CURL_SOCKET_BAD) {
-    sockerr = SOCKERRNO;
-    if(SOCK_EAGAIN(sockerr)) {
+    error = SOCKERRNO;
+    if(EAGAIN == error || SOCKEWOULDBLOCK == error) {
       /* nothing to accept */
       return 0;
     }
     logmsg("MAJOR ERROR, accept() failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     return CURL_SOCKET_BAD;
   }
 
   if(curlx_nonblock(msgsock, TRUE)) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("curlx_nonblock failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(msgsock);
     return CURL_SOCKET_BAD;
   }
@@ -1786,9 +1844,9 @@ static curl_socket_t accept_connection(curl_socket_t sock)
 #endif
     if(setsockopt(msgsock, SOL_SOCKET, SO_KEEPALIVE,
                   (void *)&flag, sizeof(flag))) {
-      sockerr = SOCKERRNO;
+      error = SOCKERRNO;
       logmsg("setsockopt(SO_KEEPALIVE) failed with error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       sclose(msgsock);
       return CURL_SOCKET_BAD;
     }
@@ -1913,11 +1971,11 @@ static int test_sws(int argc, const char *argv[])
   unsigned short port = 8999;
 #ifdef USE_UNIX_SOCKETS
   const char *unix_socket = NULL;
-  bool unlink_socket = FALSE;
+  bool unlink_socket = false;
 #endif
   struct sws_httprequest *req = NULL;
   int rc = 0;
-  int sockerr;
+  int error;
   char errbuf[STRERROR_LEN];
   int arg = 1;
   const char *connecthost = "127.0.0.1";
@@ -2044,7 +2102,7 @@ static int test_sws(int argc, const char *argv[])
       }
     }
     else if(!strcmp("--connect", argv[arg])) {
-      /* The connect host IP number that the proxy connects to no matter
+      /* The connect host IP number that the proxy will connect to no matter
          what the client asks for, but also use this as a hint that we run as
          a proxy and do a few different internal choices */
       arg++;
@@ -2077,7 +2135,7 @@ static int test_sws(int argc, const char *argv[])
            logdir, SERVERLOGS_LOCKDIR, protocol_type,
            is_proxy ? "-proxy" : "", socket_type);
 
-  install_signal_handlers(FALSE);
+  install_signal_handlers(false);
 
   req = calloc(1, sizeof(*req));
   if(!req)
@@ -2089,9 +2147,9 @@ static int test_sws(int argc, const char *argv[])
   num_sockets = 1;
 
   if(sock == CURL_SOCKET_BAD) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("Error creating socket (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     goto sws_cleanup;
   }
 
@@ -2101,18 +2159,18 @@ static int test_sws(int argc, const char *argv[])
     flag = 1;
     if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
                   (void *)&flag, sizeof(flag))) {
-      sockerr = SOCKERRNO;
+      error = SOCKERRNO;
       logmsg("setsockopt(SO_REUSEADDR) failed with error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       goto sws_cleanup;
     }
 #if defined(_WIN32) && defined(USE_UNIX_SOCKETS)
   }
 #endif
   if(curlx_nonblock(sock, TRUE)) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     logmsg("curlx_nonblock failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     goto sws_cleanup;
   }
 
@@ -2139,15 +2197,15 @@ static int test_sws(int argc, const char *argv[])
 #endif /* USE_UNIX_SOCKETS */
   }
   if(rc) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
 #ifdef USE_UNIX_SOCKETS
     if(socket_domain == AF_UNIX)
       logmsg("Error binding socket on path %s (%d) %s", unix_socket,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     else
 #endif
       logmsg("Error binding socket on port %hu (%d) %s", port,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     goto sws_cleanup;
   }
 
@@ -2166,9 +2224,9 @@ static int test_sws(int argc, const char *argv[])
       la_size = sizeof(localaddr.sa6);
 #endif
     if(getsockname(sock, &localaddr.sa, &la_size) < 0) {
-      sockerr = SOCKERRNO;
+      error = SOCKERRNO;
       logmsg("getsockname() failed with error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       sclose(sock);
       goto sws_cleanup;
     }
@@ -2203,21 +2261,22 @@ static int test_sws(int argc, const char *argv[])
          protocol_type, socket_type, location_str);
 
   /* start accepting connections */
-  if(listen(sock, 50)) {
-    sockerr = SOCKERRNO;
+  rc = listen(sock, 50);
+  if(rc) {
+    error = SOCKERRNO;
     logmsg("listen() failed with error (%d) %s",
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     goto sws_cleanup;
   }
 
 #ifdef USE_UNIX_SOCKETS
   /* listen succeeds, so let's assume a valid listening Unix socket */
-  unlink_socket = TRUE;
+  unlink_socket = true;
 #endif
 
   /*
-   * As soon as this server writes its pid file the test harness attempts
-   * to connect to this server and initiate its verification.
+   * As soon as this server writes its pid file the test harness will
+   * attempt to connect to this server and initiate its verification.
    */
 
   wrotepidfile = write_pidfile(pidname);
@@ -2270,18 +2329,17 @@ static int test_sws(int argc, const char *argv[])
     if(got_exit_signal)
       goto sws_cleanup;
 
-    sockerr = 0;
     do {
       rc = select((int)maxfd + 1, &input, &output, NULL, &timeout);
-    } while(rc < 0 && ((sockerr = SOCKERRNO) == SOCKEINTR &&
-            !got_exit_signal));
+    } while(rc < 0 && SOCKERRNO == SOCKEINTR && !got_exit_signal);
 
     if(got_exit_signal)
       goto sws_cleanup;
 
     if(rc < 0) {
+      error = SOCKERRNO;
       logmsg("select() failed with error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       goto sws_cleanup;
     }
 
@@ -2326,7 +2384,7 @@ static int test_sws(int argc, const char *argv[])
 
             if(req->connmon) {
               const char *keepopen = "[DISCONNECT]\n";
-              storerequest(keepopen, strlen(keepopen), REQUEST_DUMP_FILENAME);
+              sws_storerequest(keepopen, strlen(keepopen));
               req->connmon = FALSE;
             }
 
@@ -2357,12 +2415,12 @@ static int test_sws(int argc, const char *argv[])
              * 2) the socket is still open, and
              * 3) (stale) data is still available (or about to be available)
              *    on that socket
-             * In that case, this loop runs once more and treat that stale
+             * In that case, this loop will run once more and treat that stale
              * data (in service_connection()) as the first data received on
              * this new HTTP request and report "** Unusual request" (skipall
              * would have otherwise caused that data to be ignored). Normally,
-             * that socket is closed by the client and there is no stale data
-             * to cause this, but stranger things have happened
+             * that socket will be closed by the client and there will not be
+             * any stale data to cause this, but stranger things have happened
              * (see issue #11678).
              */
             init_httprequest(req);
@@ -2385,10 +2443,11 @@ sws_cleanup:
     sclose(sock);
 
 #ifdef USE_UNIX_SOCKETS
-  if(unlink_socket && socket_domain == AF_UNIX && unix_socket &&
-     unlink(unix_socket))
-    logmsg("unlink(%s): %d (%s)", unix_socket,
-           errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
+  if(unlink_socket && socket_domain == AF_UNIX && unix_socket) {
+    rc = unlink(unix_socket);
+    logmsg("unlink(%s) = %d (%s)", unix_socket,
+           rc, curlx_strerror(rc, errbuf, sizeof(errbuf)));
+  }
 #endif
 
   free(req);
@@ -2406,7 +2465,7 @@ sws_cleanup:
     clear_advisor_read_lock(loglockfile);
   }
 
-  restore_signal_handlers(FALSE);
+  restore_signal_handlers(false);
 
   if(got_exit_signal) {
     logmsg("========> %s sws (%s pid: %ld) exits with signal (%d)",

@@ -38,8 +38,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //config:	bool "setuidgid (4.2 kb)"
 //config:	default y
 //config:	help
-//config:	Sets UID and GID to those of the given account, and execs
-//config:	specified program.
+//config:	Sets soft resource limits as specified by options
 //config:
 //config:config ENVUIDGID
 //config:	bool "envuidgid (4.1 kb)"
@@ -467,8 +466,7 @@ int chpst_main(int argc UNUSED_PARAM, char **argv)
 	/* nice should be done before xsetuid */
 	if (opt & OPT_n) {
 		errno = 0;
-		nice(xatoi(nicestr));
-		if (errno)
+		if (nice(xatoi(nicestr)) == -1)
 			bb_simple_perror_msg_and_die("nice");
 	}
 

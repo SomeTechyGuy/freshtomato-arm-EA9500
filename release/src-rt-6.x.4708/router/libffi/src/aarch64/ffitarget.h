@@ -94,6 +94,4 @@ typedef enum ffi_abi
 #define FFI_TARGET_HAS_COMPLEX_TYPE
 #endif
 
-#define FFI_TARGET_HAS_INT128 1
-
 #endif

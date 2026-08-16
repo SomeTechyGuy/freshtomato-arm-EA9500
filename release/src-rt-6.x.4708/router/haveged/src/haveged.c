@@ -152,7 +152,6 @@ int main(int argc, char **argv)
       "d", "data",        "1", SETTINGR("Data cache size [KB], with fallback to: ", GENERIC_DCACHE ),
 #ifndef NO_COMMAND_MODE
       "c", "command",     "1", "Send a command mode to an already running haveged",
-      "C", "no-command",  "0", "Disable command mode (no socket, no semaphore)",
 #endif
       "i", "inst",        "1", SETTINGR("Instruction cache size [KB], with fallback to: ", GENERIC_ICACHE),
       "f", "file",        "1", "Sample output file,  default: '" OUTPUT_DEFAULT "', '-' for stdout",
@@ -308,9 +307,6 @@ int main(int argc, char **argv)
             params->command = optarg;
             params->setup |= CMD_MODE;
             break;
-         case 'C':
-            params->setup |= NO_CMD_FLAG;
-            break;
 #endif
          case 'd':
             params->d_cache = ATOU(optarg);
@@ -380,11 +376,10 @@ int main(int argc, char **argv)
 
       /* init semaphore */
       sem = sem_open(SEM_NAME, 0);
-      if (sem == SEM_FAILED) {
+      if (sem == NULL) {
          print_msg("sem_open() failed \n");
          print_msg("Error : %s \n", strerror(errno));
          ret = -1;
-         sem = NULL;
          goto err;
          }
 
@@ -478,12 +473,10 @@ int main(int argc, char **argv)
          }
    err:
       close(socket_fd);
-      if (sem) {
-         sem_close(sem);
-         }
+      sem_close(sem);
       return ret;
       }
-   else if (!(params->setup & RUN_AS_APP) && !(params->setup & NO_CMD_FLAG)){
+   else if (!(params->setup & RUN_AS_APP)){
       socket_fd = cmd_listen(params);
       if (socket_fd >= 0)
          fprintf(stderr, "%s: command socket is listening at fd %d\n", params->daemon, socket_fd);
@@ -497,30 +490,16 @@ int main(int argc, char **argv)
          }
       }
       /* Initialize named semaphore to synchronize command instances */
-      if (mkdir("/dev/shm", 01777) != 0) {
+      if (mkdir("/dev/shm", 0755) != 0) {
         if (errno != EEXIST) {
           error_exit("Couldn't create /dev/shm directory: %s", strerror(errno));
         }
-      } else {
-        chmod("/dev/shm", 01777);
       }
 
-      sem = sem_open(SEM_NAME, O_CREAT | O_EXCL, 0600, 1);
-      if (sem == SEM_FAILED && errno == EEXIST) {
-         /* Stale semaphore from a previous instance (e.g. after SIGKILL) —
-            we already know no other instance is running because cmd_listen
-            would have detected it above. */
-         sem_unlink(SEM_NAME);
-         sem = sem_open(SEM_NAME, O_CREAT | O_EXCL, 0600, 1);
-      }
-      if (sem == SEM_FAILED) {
-         if (errno == EEXIST)
-            fprintf(stderr, "Warning: Named semaphore " SEM_NAME " already exists; "
-                    "check for another running instance or stale semaphore in /dev/shm\n");
-         else
-            fprintf(stderr, "Warning: Couldn't create named semaphore " SEM_NAME ": %s\n", strerror(errno));
+      sem = sem_open(SEM_NAME, O_CREAT, 0644, 1);
+      if (sem == NULL) {
+         fprintf(stderr, "Warning: Couldn't create named semaphore " SEM_NAME" error: %s", strerror(errno));
          fprintf(stderr, "         %s: disabling command mode for this instance\n", params->daemon);
-         sem = NULL;
       }
     }
 #endif
@@ -612,19 +591,16 @@ int main(int argc, char **argv)
 static void daemonize(     /* RETURN: nothing   */
    void)                   /* IN: nothing       */
 {
-   int pid_fd;
-   char pidbuf[16];
+   FILE *fh;
    openlog(params->daemon, LOG_CONS, LOG_DAEMON);
    syslog(LOG_NOTICE, "%s starting up", params->daemon);
    if (daemon(0, 0) == -1)
       error_exit("Cannot fork into the background");
-   pid_fd = open(params->pid_file, O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW, 0644);
-   if (pid_fd < 0)
+   fh = fopen(params->pid_file, "w");
+   if (!fh)
       error_exit("Couldn't open PID file \"%s\" for writing: %s.", params->pid_file, strerror(errno));
-   snprintf(pidbuf, sizeof(pidbuf), "%i", getpid());
-   if (write(pid_fd, pidbuf, strlen(pidbuf)) < 0)
-      error_exit("Couldn't write PID file \"%s\": %s.", params->pid_file, strerror(errno));
-   close(pid_fd);
+   fprintf(fh, "%i", getpid());
+   fclose(fh);
    params->detached = 1;
 }
 /**
@@ -690,7 +666,7 @@ static void run_daemon(    /* RETURN: nothing   */
       error_exit("lstat has failed for the random device \"%s\": %s", params->random_device, strerror(errno));
    if ( S_ISLNK(stat_buf.st_mode) )
       error_exit("random device \"%s\" is a link. This is not supported for the security reasons.", params->random_device);
-   random_fd = open(params->random_device, O_RDWR | O_CLOEXEC);
+   random_fd = open(params->random_device, O_RDWR);
    if (random_fd == -1)
      error_exit("Couldn't open random device: %s", strerror(errno));
 
@@ -898,13 +874,6 @@ void error_exit(           /* RETURN: nothing   */
       }
    }
    havege_destroy(handle);
-#ifndef NO_COMMAND_MODE
-   if (sem != NULL) {
-      sem_close(sem);
-      sem = NULL;
-   }
-   sem_unlink(SEM_NAME);
-#endif
    exit(params->exit_code);
 }
 /**

@@ -149,7 +149,7 @@ static size_t SyncTime_CURL_WriteHeader(void *ptr, size_t size, size_t nmemb,
         int i;
         SYSTime.wMilliseconds = 500;  /* adjust to midpoint, 0.5 sec */
         for(i = 0; i < 12; i++) {
-          if(!strcmp(MthStr[i], TmpStr2)) {
+          if(strcmp(MthStr[i], TmpStr2) == 0) {
             SYSTime.wMonth = (WORD)(i + 1);
             break;
           }
@@ -232,26 +232,26 @@ int main(int argc, const char *argv[])
   if(argc > 1) {
     int OptionIndex = 1;
     while(OptionIndex < argc) {
-      if(!strncmp(argv[OptionIndex], "--server=", 9))
+      if(strncmp(argv[OptionIndex], "--server=", 9) == 0)
         snprintf(conf.timeserver, sizeof(conf.timeserver) - 1, "%s",
                  &argv[OptionIndex][9]);
 
-      if(!strcmp(argv[OptionIndex], "--showall"))
+      if(strcmp(argv[OptionIndex], "--showall") == 0)
         ShowAllHeader = 1;
 
-      if(!strcmp(argv[OptionIndex], "--synctime"))
+      if(strcmp(argv[OptionIndex], "--synctime") == 0)
         AutoSyncTime = 1;
 
-      if(!strncmp(argv[OptionIndex], "--proxy-user=", 13))
+      if(strncmp(argv[OptionIndex], "--proxy-user=", 13) == 0)
         snprintf(conf.proxy_user, sizeof(conf.proxy_user) - 1, "%s",
                  &argv[OptionIndex][13]);
 
-      if(!strncmp(argv[OptionIndex], "--proxy=", 8))
+      if(strncmp(argv[OptionIndex], "--proxy=", 8) == 0)
         snprintf(conf.http_proxy, sizeof(conf.http_proxy) - 1, "%s",
                  &argv[OptionIndex][8]);
 
-      if(!strcmp(argv[OptionIndex], "--help") ||
-         !strcmp(argv[OptionIndex], "/?")) {
+      if((strcmp(argv[OptionIndex], "--help") == 0) ||
+         (strcmp(argv[OptionIndex], "/?") == 0)) {
         showUsage();
         return 0;
       }

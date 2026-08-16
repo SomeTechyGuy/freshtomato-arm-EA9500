@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void strprint(char *);
+void strprint();
 
 int main(int argc, char **argv)
 {

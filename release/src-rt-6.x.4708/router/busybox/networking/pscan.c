@@ -37,13 +37,13 @@
 #define DERR(...) ((void)0)
 #endif
 
-static const char *port_name(char **p_etc_services, unsigned port)
+static const char *port_name(unsigned port)
 {
-	char *server;
+	struct servent *server;
 
-	server = bb_get_servname_by_port(p_etc_services, port, NULL);
+	server = getservbyport(htons(port), NULL);
 	if (server)
-		return server;
+		return server->s_name;
 	return "unknown";
 }
 
@@ -62,7 +62,6 @@ int pscan_main(int argc UNUSED_PARAM, char **argv)
 	 * Rule of thumb: with min_rtt of N msec, scanning 1000 ports
 	 * will take N seconds at absolute minimum */
 	const char *opt_min_rtt = "5";          /* -T: default min rtt in msec */
-	char *p_etc_services = NULL;
 	const char *result_str;
 	len_and_sockaddr *lsap;
 	int s;
@@ -153,8 +152,7 @@ int pscan_main(int argc UNUSED_PARAM, char **argv)
 		DMSG("out of loop @%u", diff);
 		if (result_str)
 			printf("%5u" "\t" "tcp" "\t" "%s" "\t" "%s" "\n",
-				port, result_str, port_name(&p_etc_services, port)
-			);
+					port, result_str, port_name(port));
 
 		/* Estimate new rtt - we don't want to wait entire timeout
 		 * for each port. *4 allows for rise in net delay.

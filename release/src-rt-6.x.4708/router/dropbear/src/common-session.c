@@ -117,7 +117,6 @@ void common_session_init(int sock_in, int sock_out) {
 	ses.lastpacket = 0;
 	ses.reply_queue_head = NULL;
 	ses.reply_queue_tail = NULL;
-	ses.reply_queue_len = 0;
 
 	/* set all the algos to none */
 	ses.keys = (struct key_context*)m_malloc(sizeof(struct key_context));
@@ -181,7 +180,7 @@ void session_loop(void(*loophandler)(void)) {
 		if (!fuzz.fuzzing) 
 #endif
 		{
-		dropbear_fd_set(ses.signal_pipe[0], &readfd);
+		FD_SET(ses.signal_pipe[0], &readfd);
 		}
 
 		/* set up for channels which can be read/written */
@@ -199,13 +198,13 @@ void session_loop(void(*loophandler)(void)) {
 		if (ses.sock_in != -1 
 			&& (ses.remoteident || isempty(&ses.writequeue)) 
 			&& writequeue_has_space) {
-			dropbear_fd_set(ses.sock_in, &readfd);
+			FD_SET(ses.sock_in, &readfd);
 		}
 
 		/* Ordering is important, this test must occur after any other function
 		might have queued packets (such as connection handlers) */
 		if (ses.sock_out != -1 && !isempty(&ses.writequeue)) {
-			dropbear_fd_set(ses.sock_out, &writefd);
+			FD_SET(ses.sock_out, &writefd);
 		}
 
 		val = select(ses.maxfd+1, &readfd, &writefd, NULL, &timeout);
@@ -443,7 +442,7 @@ static int ident_readln(int fd, char* buf, int count) {
 	/* leave space to null-terminate */
 	while (pos < count-1) {
 
-		dropbear_fd_set(fd, &fds);
+		FD_SET(fd, &fds);
 
 		timeout.tv_sec = 1;
 		timeout.tv_usec = 0;
@@ -504,7 +503,7 @@ void ignore_recv_response() {
 	TRACE(("Ignored msg_request_response"))
 }
 
-static void send_msg_keepalive(void) {
+static void send_msg_keepalive() {
 	time_t old_time_idle = ses.last_packet_time_idle;
 	struct Channel *chan = get_any_ready_channel();
 
@@ -548,7 +547,7 @@ static void checktimeouts() {
 	time_t now;
 	now = monotonic_now();
 
-	if (IS_DROPBEAR_SERVER && ses.authstate.authdone != 1
+	if (IS_DROPBEAR_SERVER && ses.connect_time != 0
 		&& elapsed(now, ses.connect_time) >= AUTH_TIMEOUT) {
 			dropbear_close("Timeout before auth");
 	}
@@ -593,11 +592,6 @@ static void checktimeouts() {
 			&& elapsed(now, ses.last_packet_time_idle) >= opts.idle_timeout_secs) {
 		dropbear_close("Idle timeout");
 	}
-
-	if (opts.max_duration_secs > 0
-			&& elapsed(now, ses.connect_time) >= opts.max_duration_secs) {
-		dropbear_close("Max duration reached");
-	}
 }
 
 static void update_timeout(long limit, time_t now, time_t last_event, long * timeout) {
@@ -606,7 +600,7 @@ static void update_timeout(long limit, time_t now, time_t last_event, long * tim
 		(unsigned long long)now,
 		(unsigned long long)last_event, *timeout))
 	if (last_event > 0 && limit > 0) {
-		*timeout = MIN(*timeout, MAX(0, limit - elapsed(now, last_event)));
+		*timeout = MIN(*timeout, elapsed(now, last_event) + limit);
 		TRACE2(("new timeout %ld", *timeout))
 	}
 }
@@ -636,9 +630,6 @@ static long select_timeout() {
 	}
 
 	update_timeout(opts.idle_timeout_secs, now, ses.last_packet_time_idle,
-		&timeout);
-
-	update_timeout(opts.max_duration_secs, now, ses.connect_time,
 		&timeout);
 
 	/* clamp negative timeouts to zero - event has already triggered */

@@ -1,7 +1,7 @@
-/* $Id: testgetifaddr.c,v 1.10 2025/04/21 21:43:37 nanard Exp $ */
+/* $Id: testgetifaddr.c,v 1.8 2014/03/09 23:09:36 nanard Exp $ */
 /* MiniUPnP project
- * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
- * (c) 2006-2025 Thomas Bernard
+ * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
+ * (c) 2006-2014 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 #include <stdio.h>
@@ -12,7 +12,6 @@
 #include <arpa/inet.h>
 #include "config.h"
 #include "getifaddr.h"
-#include "getconnstatus.h"
 
 #if defined(__sun)
 /* solaris 10 does not define LOG_PERROR */
@@ -23,8 +22,8 @@ int main(int argc, char * * argv) {
 	char str_addr[64];
 	struct in_addr addr;
 	struct in_addr mask;
-	int r;
 #ifdef ENABLE_IPV6
+	int r;
 	char str_addr6[64];
 #endif
 	if(argc < 2) {
@@ -33,11 +32,8 @@ int main(int argc, char * * argv) {
 	}
 
 	openlog("testgetifaddr", LOG_CONS|LOG_PERROR, LOG_USER);
-	printf("Interface %s status : %s\n", argv[1], get_wan_connection_status_str(argv[1]));
-
-	r = getifaddr(argv[1], str_addr, sizeof(str_addr), &addr, &mask);
-	if(r < 0) {
-		fprintf(stderr, "getifaddr(\"%s\") returned %d\n", argv[1], r);
+	if(getifaddr(argv[1], str_addr, sizeof(str_addr), &addr, &mask) < 0) {
+		fprintf(stderr, "Cannot get address for interface %s.\n", argv[1]);
 		return 1;
 	}
 	printf("Interface %s has IP address %s.\n", argv[1], str_addr);

@@ -1523,7 +1523,8 @@ libnfnetlink-clean:
 miniupnpd/stamp-h1:
 	$(call patch_files,miniupnpd)
 	cd miniupnpd && \
-		./configure --igd2 --leasefile --vendorcfg --portinuse --disable-pppconn --firewall=iptables --disable-tests --iptablespath=$(TOP)/$(IPTABLES_TARGET) $(if $(TCONFIG_IPV6),--ipv6,)
+		PKG_CONFIG_LIBDIR="" \
+		./configure --igd2 --leasefile --vendorcfg --portinuse --disable-pppconn --firewall=iptables --iptablespath=$(TOP)/$(IPTABLES_TARGET) $(if $(TCONFIG_IPV6),--ipv6,)
 	@touch $@
 
 miniupnpd: miniupnpd/stamp-h1
@@ -1538,7 +1539,8 @@ miniupnpd-install:
 
 miniupnpd-clean:
 	-@$(MAKE) -C miniupnpd clean
-	@rm -f miniupnpd/config.h miniupnpd/stamp-h1
+	@rm -f miniupnpd/config.h
+	@rm -f miniupnpd/stamp-h1
 	$(call unpatch_files,miniupnpd)
 
 vsftpd:
@@ -1880,11 +1882,11 @@ sqlite: sqlite/Makefile
 
 sqlite-install:
 ifeq ($(or $(TCONFIG_NGINX),$(TCONFIG_MEDIA_SERVER)),y)
-	install -D sqlite/staged/usr/lib/libsqlite3.so.3.53.3 $(INSTALLDIR)/sqlite/usr/lib/libsqlite3.so.3.53.3
-	$(STRIP) $(INSTALLDIR)/sqlite/usr/lib/libsqlite3.so.3.53.3
+	install -D sqlite/staged/usr/lib/libsqlite3.so.3.53.0 $(INSTALLDIR)/sqlite/usr/lib/libsqlite3.so.3.53.0
+	$(STRIP) $(INSTALLDIR)/sqlite/usr/lib/libsqlite3.so.3.53.0
 	cd $(INSTALLDIR)/sqlite/usr/lib/ && \
-		ln -sf libsqlite3.so.3.53.3 libsqlite3.so.0 && \
-		ln -sf libsqlite3.so.3.53.3 libsqlite3.so
+		ln -sf libsqlite3.so.3.53.0 libsqlite3.so.0 && \
+		ln -sf libsqlite3.so.3.53.0 libsqlite3.so
 endif
 	@true
 
@@ -3099,7 +3101,6 @@ $(LIBCURL_TARGET)-clean:
 	$(call unpatch_files,$(LIBCURL_TARGET))
 
 libevent/stamp-h1:
-	$(call patch_files,libevent)
 	cd libevent && ./autogen.sh && \
 		CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC" \
 		CPPFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC -I$(TOP)/zlib/staged/usr/include" \
@@ -3115,7 +3116,7 @@ libevent: libevent/stamp-h1
 
 libevent-install:
 ifeq ($(or $(TCONFIG_BBT),$(TCONFIG_TOR)),y)
-	install -D libevent/.libs/libevent-2.1.so.7.0.2 $(INSTALLDIR)/libevent/usr/lib/libevent-2.1.so.7
+	install -D libevent/.libs/libevent-2.1.so.7.0.1 $(INSTALLDIR)/libevent/usr/lib/libevent-2.1.so.7
 	$(STRIP) -s $(INSTALLDIR)/libevent/usr/lib/libevent-2.1.so.7
 	cd $(INSTALLDIR)/libevent/usr/lib/ && ln -sf libevent-2.1.so.7 libevent.so
 endif
@@ -3125,7 +3126,6 @@ libevent-clean:
 	-@$(MAKE) -C libevent clean
 	@rm -f libevent/stamp-h1 libevent/Makefile
 	@rm -rf libevent/staged
-	$(call unpatch_files,libevent)
 
 libiconv/stamp-h1:
 	cd libiconv && \
@@ -3854,7 +3854,6 @@ expat/static/Makefile:
 			-DEXPAT_WITH_ARC4RANDOM=OFF \
 			-DEXPAT_WITH_ARC4RANDOM_BUF=OFF \
 			-DEXPAT_WITH_GETENTROPY=OFF \
-			-DEXPAT_DEV_URANDOM=ON \
 			..
 
 expat/build/Makefile:
@@ -3876,7 +3875,6 @@ expat/build/Makefile:
 			-DEXPAT_WITH_ARC4RANDOM=OFF \
 			-DEXPAT_WITH_ARC4RANDOM_BUF=OFF \
 			-DEXPAT_WITH_GETENTROPY=OFF \
-			-DEXPAT_DEV_URANDOM=ON \
 			..
 
 expat: expat/static/Makefile expat/build/Makefile
@@ -3886,8 +3884,8 @@ expat: expat/static/Makefile expat/build/Makefile
 	@$(MAKE) -C expat/build DESTDIR=$(TOP)/expat/staged install
 
 expat-install:
-	install -D expat/build/libexpat.so.1.12.2 $(INSTALLDIR)/expat/usr/lib/libexpat.so.1.12.2
-	cd $(INSTALLDIR)/expat/usr/lib && $(STRIP) libexpat.so.1.12.2 && ln -sf libexpat.so.1.12.2 libexpat.so.1
+	install -D expat/build/libexpat.so.1.12.0 $(INSTALLDIR)/expat/usr/lib/libexpat.so.1.12.0
+	cd $(INSTALLDIR)/expat/usr/lib && $(STRIP) libexpat.so.1.12.0 && ln -sf libexpat.so.1.12.0 libexpat.so.1
 
 expat-clean:
 	@rm -rf expat/static
@@ -3911,7 +3909,6 @@ avahi/stamp-h1:
 			--disable-manpages --disable-xmltoman --disable-doxygen-doc --disable-doxygen-dot \
 			--disable-doxygen-man --disable-doxygen-rtf --disable-doxygen-xml --disable-doxygen-chm \
 			--disable-doxygen-chi --disable-doxygen-html --disable-doxygen-ps --disable-doxygen-pdf \
-			--disable-libsystemd --with-systemdsystemunitdir=no \
 			--with-xml=expat \
 			--with-avahi-user=nobody --with-avahi-group=nobody \
 			--with-autoipd-user=nobody --with-autoipd-group=nobody \
@@ -4246,9 +4243,9 @@ libffi: libffi/stamp-h1
 
 libffi-install:
 ifeq ($(TCONFIG_IRQBALANCE),y)
-	install -D $(TOP)/libffi/.libs/libffi.so.8.3.1 $(INSTALLDIR)/libffi/usr/lib/libffi.so.8.3.1
-	$(STRIP) $(INSTALLDIR)/libffi/usr/lib/libffi.so.8.3.1
-	cd $(INSTALLDIR)/libffi/usr/lib && ln -sf libffi.so.8.3.1 libffi.so.8 && ln -sf libffi.so.8.3.1 libffi.so
+	install -D $(TOP)/libffi/.libs/libffi.so.8.2.0 $(INSTALLDIR)/libffi/usr/lib/libffi.so.8.2.0
+	$(STRIP) $(INSTALLDIR)/libffi/usr/lib/libffi.so.8.2.0
+	cd $(INSTALLDIR)/libffi/usr/lib && ln -sf libffi.so.8.2.0 libffi.so.8 && ln -sf libffi.so.8.2.0 libffi.so
 endif
 	@true
 

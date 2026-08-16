@@ -1,20 +1,15 @@
-# Avahi i18n resource file
-# Copyright (C) 2008, 2009, 2010, 2019 Avahi copyright holder
-# This file is distributed under the same license as the Avahi package.
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
-# Silvio Pierro <perplesso82@gmail.com>, 2008.
-# Gianluca Busiello <busiello@ceinge.unina.it>, 2008.
-# Francesco Tombolini <tombo@adamantio.net>, 2008.
-# Luca Ferretti <elle.uca@ubuntu-it.org>, 2009.
-# Milo Casagrande <milo@ubuntu.com>, 2009, 2010.
-# Sebastiano Pistore <SebastianoPistore.info@protonmail.ch>, 2019
 msgid ""
 msgstr ""
 "Project-Id-Version: Avahi\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-10-10 13:24+0200\n"
-"PO-Revision-Date: 2019-12-02 16:08+0100\n"
+"PO-Revision-Date: 2010-11-29 23:19+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Italian (http://www.transifex.com/lennart/avahi/language/"
 "it/)\n"
 "Language: it\n"
@@ -22,8 +17,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"Last-Translator: Sebastiano Pistore <SebastianoPistore.info@protonmail.ch>\n"
-"X-Generator: Poedit 2.2.4\n"
 
 #: ../avahi-common/error.c:30
 msgid "OK"
@@ -59,7 +52,7 @@ msgstr "La risorsa key record è un pattern"
 
 #: ../avahi-common/error.c:38
 msgid "Local name collision"
-msgstr "Collisione locale nomi"
+msgstr "Collisione nomi locale"
 
 #: ../avahi-common/error.c:39
 msgid "Invalid record"
@@ -87,7 +80,7 @@ msgstr "Indirizzi non validi"
 
 #: ../avahi-common/error.c:46
 msgid "Timeout reached"
-msgstr "Timeout scaduto"
+msgstr "Raggiunto il timeout"
 
 #: ../avahi-common/error.c:47
 msgid "Too many clients"
@@ -103,7 +96,7 @@ msgstr "Troppe voci"
 
 #: ../avahi-common/error.c:50
 msgid "OS Error"
-msgstr "Errore di sistema"
+msgstr "Errore di SO"
 
 #: ../avahi-common/error.c:52
 msgid "Access denied"
@@ -151,7 +144,7 @@ msgstr "Non trovato"
 
 #: ../avahi-common/error.c:64
 msgid "Invalid configuration"
-msgstr "Configurazione non valida"
+msgstr "configurazione non valida"
 
 #: ../avahi-common/error.c:65
 msgid "Version mismatch"
@@ -356,7 +349,7 @@ msgstr "Dati TXT"
 
 #: ../avahi-ui/avahi-ui.c:225
 msgid "The TXT data of the resolved service"
-msgstr "Dati TXT del servizio risolto"
+msgstr "I dati TXT del servizio risolto"
 
 #: ../avahi-ui/avahi-ui.c:230
 msgid "Resolve Service"
@@ -418,7 +411,7 @@ msgstr "Lettura del dominio di Avahi non riuscita: %s"
 
 #: ../avahi-ui/avahi-ui.c:706
 msgid "Browse service type list is empty!"
-msgstr "L'elenco esplora tipo di servizio è vuoto!"
+msgstr "L'elenco esplora tipo di servizio è vuoto."
 
 #: ../avahi-ui/avahi-ui.c:717
 #, c-format
@@ -460,12 +453,14 @@ msgstr "Esplorazione..."
 
 #: ../avahi-ui/avahi-ui.c:1047 ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156
 #: ../avahi-ui/bssh.c:161
+#, fuzzy
 msgid "_Cancel"
-msgstr "_Cancellare"
+msgstr "Cancellato.\n"
 
 #: ../avahi-ui/avahi-ui.c:1048
+#, fuzzy
 msgid "_OK"
-msgstr "_OK"
+msgstr "OK"
 
 #: ../avahi-ui/avahi-ui.c:1134
 msgid "Initializing..."
@@ -517,7 +512,7 @@ msgstr "Scegliere il server shell"
 
 #: ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156 ../avahi-ui/bssh.c:161
 msgid "C_onnect"
-msgstr "C_onnettere"
+msgstr ""
 
 #: ../avahi-ui/bssh.c:151
 msgid "Desktop"
@@ -632,16 +627,14 @@ msgstr "Versione server: %s; Nome host: %s\n"
 #: ../avahi-utils/avahi-browse.c:549
 #, c-format
 msgid "E Ifce Prot Domain\n"
-msgstr "E Ifce Prot Domain\n"
+msgstr "E Inte Prot Dominio\n"
 
 #. Translators: This is a column heading with abbreviations for
 #. *   Event (+/-), Network Interface, Protocol (IPv4/v6), Domain
 #: ../avahi-utils/avahi-browse.c:553
 #, c-format
 msgid "E Ifce Prot %-*s %-20s Domain\n"
-msgstr ""
-"E Ifce Prot %-*s %-20s Domain\n"
-"\n"
+msgstr "E Inte Prot %-*s %-20s Dominio\n"
 
 #. We have been disconnected, so let reconnect
 #: ../avahi-utils/avahi-browse.c:585 ../avahi-utils/avahi-publish.c:163
@@ -677,8 +670,7 @@ msgid ""
 "    -v --verbose         Enable verbose mode\n"
 "    -t --terminate       Terminate after dumping a more or less complete "
 "list\n"
-"    -c --cache           Terminate after dumping all entries from the "
-"cache\n"
+"    -c --cache           Terminate after dumping all entries from the cache\n"
 "    -l --ignore-local    Ignore local services\n"
 "    -r --resolve         Resolve services found\n"
 "    -f --no-fail         Don't fail if the daemon is not available\n"
@@ -688,8 +680,7 @@ msgstr ""
 "    -V --version         Mostra la versione\n"
 "    -D --browse-domains  Esplora per domini di esplorazione invece\n"
 "                         che per servizi\n"
-"    -a --all             Mostra tutti i servizi, indifferentemente dal "
-"tipo\n"
+"    -a --all             Mostra tutti i servizi, indifferentemente dal tipo\n"
 "    -d --domain=DOMINIO  Il dominio da esplorare\n"
 "    -v --verbose         Abilita la modalità prolissa\n"
 "    -t --terminate       Termina dopo aver riversato un elenco più\n"
@@ -788,8 +779,7 @@ msgstr ""
 "    -v --verbose         Abilita la modalità verbosa\n"
 "    -d --domain=DOMAIN   Dominio in cui pubblicare servizi\n"
 "    -H --host=DOMAIN     L'host dove risiedono i servizi\n"
-"       --subtype=SUBTYPE Un sottotipo addizionale con cui registrare "
-"questo\n"
+"       --subtype=SUBTYPE Un sottotipo addizionale con cui registrare questo\n"
 "                         servizio\n"
 "    -R --no-reverse      Non pubblica le voci invertite con l'indirizzo\n"
 "    -f --no-fail         Non fallisce se il demone non è disponibile\n"
@@ -877,7 +867,7 @@ msgstr ""
 #: ../avahi-utils/avahi-set-host-name.c:114
 #, c-format
 msgid "Invalid number of arguments, expecting exactly one.\n"
-msgstr "Numero di argomenti non valido, ne è atteso solamente uno.\n"
+msgstr "Numero di argomenti non valido, ne è atteso esattamente uno.\n"
 
 #: ../avahi-utils/avahi-set-host-name.c:193
 #, c-format

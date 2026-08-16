@@ -58,7 +58,9 @@ struct curl_context {
 static struct curl_context *create_curl_context(curl_socket_t sockfd,
                                                 struct datauv *uv)
 {
-  struct curl_context *context = malloc(sizeof(*context));
+  struct curl_context *context;
+
+  context = (struct curl_context *)malloc(sizeof(*context));
 
   context->sockfd = sockfd;
   context->uv = uv;

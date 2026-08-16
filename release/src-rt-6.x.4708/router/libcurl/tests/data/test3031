@@ -32,7 +32,7 @@ http
 http
 </features>
 <name>
---dump-header with --create-dirs
+--output-dir with --create-dirs
 </name>
 <command>
 http://%HOSTIP:%HTTPPORT/this/is/the/%TESTNUMBER --dump-header %PWD/%LOGDIR/tmp/out.txt --create-dirs

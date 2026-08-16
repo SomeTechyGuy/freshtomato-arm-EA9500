@@ -5,6 +5,7 @@
 HTTP
 HTTP GET
 timeout
+FAILURE
 </keywords>
 </info>
 # Server-side

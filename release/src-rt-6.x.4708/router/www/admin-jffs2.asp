@@ -46,15 +46,8 @@ function formatJffs() {
 
 function verifyFields(focused, quiet) {
 	var b = !E('_f_jffs2_on').checked;
-
 	E('format').disabled = b;
-	exec = E('_jffs2_exec');
-	exec.disabled = b;
-
-	if (!b) {
-		if (!v_nodelim(exec, quiet, 'exec path | & "'))
-			return 0;
-	}
+	E('_jffs2_exec').disabled = b;
 
 	return 1;
 }

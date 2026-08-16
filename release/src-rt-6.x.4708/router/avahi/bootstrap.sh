@@ -18,7 +18,6 @@
 # USA.
 
 FLAGS="--sysconfdir=/etc --localstatedir=/var --enable-tests --enable-compat-howl --enable-compat-libdns_sd"
-export MAKE="make"
 
 # Feel free to add your own custom flags in here -Lathiat
 
@@ -31,12 +30,13 @@ case `uname -s` in
     FLAGS="$FLAGS --prefix=/opt/local --disable-pygtk"
     ;;
     FreeBSD)
-    export MAKE="gmake"
-    export LIBTOOLIZE=/usr/local/bin/libtoolize
+    cp /usr/local/share/aclocal/libtool15.m4 common
+    cp /usr/local/share/aclocal/pkg.m4 common
+    export LIBTOOLIZE=/usr/local/bin/libtoolize15
     export CFLAGS="-I/usr/local/include"
-    export LDFLAGS="-L/usr/local/lib -lintl"
+    export LDFLAGS="-L/usr/local/lib"
     export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-    FLAGS="$FLAGS --prefix=/opt/ --with-distro=freebsd --disable-libsystemd --disable-mono --disable-manpages"
+    FLAGS="$FLAGS --prefix=/opt/ --with-distro=none --disable-python --disable-dbus --disable-glib --disable-gtk --disable-libevent"
     ;;
     NetBSD)
     export LIBTOOLIZE=libtoolize

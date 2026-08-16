@@ -16,7 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -499,8 +498,6 @@ int ustream_vprintf(struct ustream *s, const char *format, va_list arg)
 			maxlen -= wr;
 			return ustream_write_buffered(s, buf, maxlen, wr);
 		} else {
-			if (maxlen == INT_MAX)
-				return 0;
 			buf = malloc(maxlen + 1);
 			if (!buf)
 				return 0;
@@ -530,8 +527,6 @@ int ustream_vprintf(struct ustream *s, const char *format, va_list arg)
 	if (maxlen < buflen)
 		return wr;
 
-	if (maxlen == INT_MAX)
-		return wr;
 	buf = malloc(maxlen + 1);
 	if (!buf)
 		return wr;

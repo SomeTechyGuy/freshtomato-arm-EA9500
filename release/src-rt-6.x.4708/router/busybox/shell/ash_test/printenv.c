@@ -31,7 +31,9 @@
 extern char **environ;
 
 int
-main (int argc, char **argv)
+main (argc, argv)
+     int argc;
+     char **argv;
 {
   register char **envp, *eval;
   int len;

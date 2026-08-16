@@ -78,7 +78,7 @@ static ParameterError varfunc(char *c, /* content */
                               size_t flen, /* function string length */
                               struct dynbuf *out)
 {
-  char *allocptr = NULL;
+  bool alloc = FALSE;
   ParameterError err = PARAM_OK;
   const char *finput = f;
 
@@ -185,18 +185,19 @@ static ParameterError varfunc(char *c, /* content */
       err = PARAM_EXPAND_ERROR;
       break;
     }
-    if(allocptr)
-      curlx_free(allocptr);
+    if(alloc)
+      curlx_free(c);
 
     clen = curlx_dyn_len(out);
-    allocptr = c = curlx_memdup0(curlx_dyn_ptr(out), clen);
+    c = curlx_memdup0(curlx_dyn_ptr(out), clen);
     if(!c) {
       err = PARAM_NO_MEM;
       break;
     }
+    alloc = TRUE;
   }
-  if(allocptr)
-    curlx_free(allocptr);
+  if(alloc)
+    curlx_free(c);
   if(err)
     curlx_dyn_free(out);
   return err;
@@ -316,7 +317,7 @@ ParameterError varexpand(const char *line, struct dynbuf *out, bool *replaced)
           if(result)
             return PARAM_NO_MEM;
 
-          added = TRUE;
+          added = true;
         }
       }
       line = &clp[2];
@@ -354,7 +355,7 @@ static ParameterError addvariable(const char *name,
   p = curlx_calloc(1, sizeof(struct tool_var) + nlen);
   if(p) {
     memcpy(p->name, name, nlen);
-    /* the null-termination byte is already present from above */
+    /* the null termination byte is already present from above */
 
     p->content = contalloc ? content : curlx_memdup0(content, clen);
     if(p->content) {

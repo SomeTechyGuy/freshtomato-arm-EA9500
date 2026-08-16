@@ -736,7 +736,7 @@ static void add_dict_entry(DBusMessageIter *container, const char *key, const ch
 
 static void add_dict_int(DBusMessageIter *container, const char *key, const unsigned int val)
 {
-  snprintf(daemon->namebuff, MAXDNAMESTR, "%u", val);
+  snprintf(daemon->namebuff, MAXDNAME, "%u", val);
   
   add_dict_entry(container, key, daemon->namebuff);
 }
@@ -1055,7 +1055,7 @@ void emit_dbus_signal(int action, struct dhcp_lease *lease, char *hostname)
   DBusConnection *connection = (DBusConnection *)daemon->dbus;
   DBusMessage* message = NULL;
   DBusMessageIter args;
-  char *action_str, *mac;
+  char *action_str, *mac = daemon->namebuff;
   unsigned char *p;
   int i;
 
@@ -1068,7 +1068,7 @@ void emit_dbus_signal(int action, struct dhcp_lease *lease, char *hostname)
 #ifdef HAVE_DHCP6
    if (lease->flags & (LEASE_TA | LEASE_NA))
      {
-       mac = print_mac(lease->clid, lease->clid_len);
+       print_mac(mac, lease->clid, lease->clid_len);
        inet_ntop(AF_INET6, &lease->addr6, daemon->addrbuff, ADDRSTRLEN);
      }
    else
@@ -1076,7 +1076,7 @@ void emit_dbus_signal(int action, struct dhcp_lease *lease, char *hostname)
      {
        p = extended_hwaddr(lease->hwaddr_type, lease->hwaddr_len,
 			   lease->hwaddr, lease->clid_len, lease->clid, &i);
-       mac = print_mac(p, i);
+       print_mac(mac, p, i);
        inet_ntop(AF_INET, &lease->addr, daemon->addrbuff, ADDRSTRLEN);
      }
 

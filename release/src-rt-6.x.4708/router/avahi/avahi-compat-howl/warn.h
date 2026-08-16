@@ -21,7 +21,7 @@
 ***/
 
 /* To avoid symbol name clashes when a process links to both our
- * compatibility layers, we move the symbols out of the way here */
+ * compatiblity layers, we move the symbols out of the way here */
 
 #define avahi_warn_unsupported avahi_warn_unsupported_HOWL
 #define avahi_warn_linkage avahi_warn_linkage_HOWL

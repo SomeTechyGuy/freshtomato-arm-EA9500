@@ -68,11 +68,6 @@
  */
 #define TUN_MTU_DEFAULT 1500
 
-/**
- * Maximum MTU we accept for MTU related options
- */
-#define TUN_MTU_MAX 65536
-
 /*
  * Minimum maximum MTU
  */

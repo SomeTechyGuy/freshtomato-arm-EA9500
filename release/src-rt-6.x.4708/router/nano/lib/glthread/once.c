@@ -21,8 +21,6 @@
 
 #include "glthread/once.h"
 
-#include <errno.h>
-
 /* ========================================================================= */
 
 #if USE_ISOC_THREADS || USE_ISOC_AND_POSIX_THREADS

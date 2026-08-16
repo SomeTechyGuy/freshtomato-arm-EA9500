@@ -44,10 +44,10 @@ static CURLcode test_lib521(const char *URL)
     return result;
   }
 
-  easy_setopt(curl, CURLOPT_URL, URL);
-  easy_setopt(curl, CURLOPT_PORT, (long)port);
-  easy_setopt(curl, CURLOPT_USERPWD, "xxx:yyy");
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_PORT, (long)port);
+  test_setopt(curl, CURLOPT_USERPWD, "xxx:yyy");
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   result = curl_easy_perform(curl);
 

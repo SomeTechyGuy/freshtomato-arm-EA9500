@@ -34,7 +34,6 @@
 #include "run_command.h"
 #include "session_id.h"
 #include "ssl.h"
-#include "buffer.h"
 
 #include "tls_crypt.h"
 
@@ -521,15 +520,15 @@ error_exit:
 }
 
 static bool
-tls_crypt_v2_check_client_key_age(const struct buffer *tls_crypt_v2_metadata, int max_days)
+tls_crypt_v2_check_client_key_age(const struct tls_wrap_ctx *ctx, int max_days)
 {
-    if (BLEN(tls_crypt_v2_metadata) < 1 + sizeof(int64_t))
+    if (ctx->tls_crypt_v2_metadata.len < 1 + sizeof(int64_t))
     {
         msg(M_WARN, "ERROR: Client key metadata is too small to contain a timestamp.");
         return false;
     }
 
-    const uint8_t *metadata = buf_bptr(tls_crypt_v2_metadata);
+    const uint8_t *metadata = ctx->tls_crypt_v2_metadata.data;
     if (*metadata != TLS_CRYPT_METADATA_TYPE_TIMESTAMP)
     {
         msg(M_WARN, "ERROR: Client key does not have a timestamp.");
@@ -549,14 +548,12 @@ tls_crypt_v2_check_client_key_age(const struct buffer *tls_crypt_v2_metadata, in
 }
 
 static bool
-tls_crypt_v2_verify_metadata(const struct buffer *tls_crypt_v2_metadata, const struct tls_options *opt)
+tls_crypt_v2_verify_metadata(const struct tls_wrap_ctx *ctx, const struct tls_options *opt)
 {
     bool ret = false;
     struct gc_arena gc = gc_new();
     const char *tmp_file = NULL;
-
-    struct buffer metadata = *tls_crypt_v2_metadata;
-
+    struct buffer metadata = ctx->tls_crypt_v2_metadata;
     int metadata_type = buf_read_u8(&metadata);
     if (metadata_type < 0)
     {
@@ -608,7 +605,7 @@ cleanup:
 
 bool
 tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
-                                const struct tls_options *opt)
+                                const struct tls_options *opt, bool initial_packet)
 {
     if (!ctx->tls_crypt_v2_server_key.cipher)
     {
@@ -636,8 +633,7 @@ tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
         return false;
     }
 
-    /* Check if this context already owns an initialised key */
-    if (ctx->cleanup_key_ctx == true)
+    if (!initial_packet)
     {
         /* This might be a harmless resend of the packet but it is better to
          * just ignore the WKC part than trying to setup tls-crypt keys again.
@@ -650,7 +646,7 @@ tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
          * and this is resend. So return the normal part of the packet,
          * basically transforming the CONTROL_WKC_V1 into a normal CONTROL_V1
          * packet*/
-        msg(D_TLS_ERRORS, "Control channel security already setup. Ignoring "
+        msg(D_TLS_ERRORS, "control channel security already setup ignoring "
                           "wrapped key part of packet.");
 
         /* Remove client key from buffer so tls-crypt code can unwrap message */
@@ -658,24 +654,26 @@ tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
         return true;
     }
 
-    struct buffer tls_crypt_v2_metadata = alloc_buf(TLS_CRYPT_V2_MAX_METADATA_LEN);
-    if (!tls_crypt_v2_unwrap_client_key(&ctx->original_wrap_keydata, &tls_crypt_v2_metadata,
+    ctx->tls_crypt_v2_metadata = alloc_buf(TLS_CRYPT_V2_MAX_METADATA_LEN);
+    if (!tls_crypt_v2_unwrap_client_key(&ctx->original_wrap_keydata, &ctx->tls_crypt_v2_metadata,
                                         wrapped_client_key, &ctx->tls_crypt_v2_server_key))
     {
         msg(D_TLS_ERRORS, "Can not unwrap tls-crypt-v2 client key");
-        goto error;
+        secure_memzero(&ctx->original_wrap_keydata, sizeof(ctx->original_wrap_keydata));
+        return false;
     }
 
-    if (opt && opt->tls_crypt_v2_max_age > 0 && !tls_crypt_v2_check_client_key_age(&tls_crypt_v2_metadata, opt->tls_crypt_v2_max_age))
+    if (opt && opt->tls_crypt_v2_max_age > 0 && !tls_crypt_v2_check_client_key_age(ctx, opt->tls_crypt_v2_max_age))
     {
-        goto error;
+        secure_memzero(&ctx->original_wrap_keydata, sizeof(ctx->original_wrap_keydata));
+        return false;
     }
 
-    if (opt && opt->tls_crypt_v2_verify_script && !tls_crypt_v2_verify_metadata(&tls_crypt_v2_metadata, opt))
+    if (opt && opt->tls_crypt_v2_verify_script && !tls_crypt_v2_verify_metadata(ctx, opt))
     {
-        goto error;
+        secure_memzero(&ctx->original_wrap_keydata, sizeof(ctx->original_wrap_keydata));
+        return false;
     }
-    free_buf(&tls_crypt_v2_metadata);
 
     /* Load the decrypted key */
     ctx->mode = TLS_WRAP_CRYPT;
@@ -688,10 +686,6 @@ tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
     ASSERT(buf_inc_len(buf, -(BLEN(&wrapped_client_key))));
 
     return true;
-error:
-    secure_memzero(&ctx->original_wrap_keydata, sizeof(ctx->original_wrap_keydata));
-    free_buf(&tls_crypt_v2_metadata);
-    return false;
 }
 
 void
@@ -764,10 +758,9 @@ tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadat
 
     if (!filename || streq(filename, ""))
     {
-        buf_null_terminate(&client_key_pem);
+        printf("%.*s\n", BLEN(&client_key_pem), BPTR(&client_key_pem));
         client_file = (const char *)BPTR(&client_key_pem);
         client_inline = true;
-        printf("%s\n", client_file);
     }
     else if (!buffer_write_file(filename, &client_key_pem))
     {

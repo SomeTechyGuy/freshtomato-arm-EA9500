@@ -36,6 +36,14 @@ static void t1945_showem(CURL *curl, unsigned int type)
   }
 }
 
+static size_t t1945_write_cb(char *data, size_t n, size_t l, void *userp)
+{
+  /* take care of the data here, ignored in this example */
+  (void)data;
+  (void)userp;
+  return n * l;
+}
+
 static CURLcode test_lib1945(const char *URL)
 {
   CURL *curl;
@@ -48,7 +56,7 @@ static CURLcode test_lib1945(const char *URL)
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   /* ignores any content */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, tutil_throwaway_cb);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, t1945_write_cb);
 
   /* if there is a proxy set, use it */
   if(libtest_arg2 && *libtest_arg2) {
@@ -57,7 +65,7 @@ static CURLcode test_lib1945(const char *URL)
   }
   result = curl_easy_perform(curl);
   if(result) {
-    curl_mprintf("badness: %d\n", (int)result);
+    curl_mprintf("badness: %d\n", result);
   }
   t1945_showem(curl, CURLH_CONNECT | CURLH_HEADER | CURLH_TRAILER | CURLH_1XX);
 

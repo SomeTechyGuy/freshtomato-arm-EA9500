@@ -46,16 +46,16 @@ static CURLcode test_lib542(const char *URL)
   }
 
   /* enable verbose */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* enable NOBODY */
-  easy_setopt(curl, CURLOPT_NOBODY, 1L);
+  test_setopt(curl, CURLOPT_NOBODY, 1L);
 
   /* disable HEADER */
-  easy_setopt(curl, CURLOPT_HEADER, 0L);
+  test_setopt(curl, CURLOPT_HEADER, 0L);
 
   /* specify target */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Now run off and do what you have been told! */
   result = curl_easy_perform(curl);

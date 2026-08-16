@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2026 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2000-2021 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -54,7 +54,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
     const ASN1_ITEM *it,
     int tag, int aclass, char opt,
     ASN1_TLC *ctx);
-static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
     int utype, char *free_cont, const ASN1_ITEM *it);
 
 /* Table to convert tags to bit values, used for MSTRING type */
@@ -855,24 +855,19 @@ err:
 
 /* Translate ASN1 content octets into a structure */
 
-static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
     int utype, char *free_cont, const ASN1_ITEM *it)
 {
     ASN1_VALUE **opval = NULL;
     ASN1_STRING *stmp;
     ASN1_TYPE *typ = NULL;
     int ret = 0;
-    int ilen = (int)len;
     const ASN1_PRIMITIVE_FUNCS *pf;
     ASN1_INTEGER **tint;
     pf = it->funcs;
 
-    if (pf && pf->prim_c2i) {
-        if (len == (long)ilen)
-            return pf->prim_c2i(pval, cont, ilen, utype, free_cont, it);
-        ERR_raise(ERR_LIB_ASN1, ASN1_R_TOO_LONG);
-        return 0;
-    }
+    if (pf && pf->prim_c2i)
+        return pf->prim_c2i(pval, cont, len, utype, free_cont, it);
     /* If ANY type clear type and set pointer to internal value */
     if (it->utype == V_ASN1_ANY) {
         if (*pval == NULL) {
@@ -890,8 +885,7 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
     }
     switch (utype) {
     case V_ASN1_OBJECT:
-        if (len != (long)ilen
-            || !ossl_c2i_ASN1_OBJECT((ASN1_OBJECT **)pval, &cont, ilen))
+        if (!ossl_c2i_ASN1_OBJECT((ASN1_OBJECT **)pval, &cont, len))
             goto err;
         break;
 
@@ -946,10 +940,6 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
     case V_ASN1_SET:
     case V_ASN1_SEQUENCE:
     default:
-        if (len != (long)ilen) {
-            ERR_raise(ERR_LIB_ASN1, ASN1_R_TOO_LONG);
-            goto err;
-        }
         if (utype == V_ASN1_BMPSTRING && (len & 1)) {
             ERR_raise(ERR_LIB_ASN1, ASN1_R_BMPSTRING_IS_WRONG_LENGTH);
             goto err;
@@ -974,10 +964,10 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
         if (*free_cont) {
             OPENSSL_free(stmp->data);
             stmp->data = (unsigned char *)cont; /* UGLY CAST! RL */
-            stmp->length = ilen;
+            stmp->length = len;
             *free_cont = 0;
         } else {
-            if (!ASN1_STRING_set(stmp, cont, ilen)) {
+            if (!ASN1_STRING_set(stmp, cont, len)) {
                 ERR_raise(ERR_LIB_ASN1, ERR_R_MALLOC_FAILURE);
                 ASN1_STRING_free(stmp);
                 *pval = NULL;

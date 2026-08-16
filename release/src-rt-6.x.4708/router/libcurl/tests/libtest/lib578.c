@@ -66,26 +66,26 @@ static CURLcode test_lib578(const char *URL)
   }
 
   /* First set the URL that is about to receive our POST. */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Now specify we want to POST data */
-  easy_setopt(curl, CURLOPT_POST, 1L);
+  test_setopt(curl, CURLOPT_POST, 1L);
 
   /* Set the expected POST size */
-  easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)data_size);
-  easy_setopt(curl, CURLOPT_POSTFIELDS, t578_testdata);
+  test_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)data_size);
+  test_setopt(curl, CURLOPT_POSTFIELDS, t578_testdata);
 
   /* we want to use our own progress function */
-  easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-  easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, t578_progress_callback);
+  test_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+  test_setopt(curl, CURLOPT_PROGRESSFUNCTION, t578_progress_callback);
 
   /* get verbose debug output please */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* include headers in the output */
-  easy_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
 
-  /* Perform the request, result gets the return code */
+  /* Perform the request, result will get the return code */
   result = curl_easy_perform(curl);
 
 test_cleanup:

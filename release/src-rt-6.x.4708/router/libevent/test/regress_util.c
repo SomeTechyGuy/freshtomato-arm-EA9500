@@ -979,8 +979,6 @@ test_evutil_rand(void *arg)
 		tt_int_op(r, <, 9999);
 	}
 
-	(void) n;
-
 	/* for (i=0;i<256;++i) { printf("%3d %2d\n", i, counts[i]); } */
 end:
 	;

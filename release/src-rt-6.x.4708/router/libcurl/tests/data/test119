@@ -5,6 +5,7 @@
 FTP
 PORT
 RETR
+FAILURE
 </keywords>
 </info>
 # Server-side

@@ -1,6 +1,3 @@
-# If job control is disabled, skip the test ("User defined signal 2" text not emitted)
-test "`type jobs`" = "jobs is a shell builtin" || exit 77
-
 # avoid ugly warnings about signals not being caught
 trap ":" USR1 USR2
 

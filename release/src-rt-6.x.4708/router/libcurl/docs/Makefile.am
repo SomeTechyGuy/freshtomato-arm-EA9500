@@ -53,7 +53,6 @@ INTERNALDOCS =                                   \
   internals/CLIENT-WRITERS.md                    \
   internals/CODE_STYLE.md                        \
   internals/CONNECTION-FILTERS.md                \
-  internals/CREDENTIALS.md                       \
   internals/CURLX.md                             \
   internals/DYNBUF.md                            \
   internals/HASH.md                              \
@@ -62,7 +61,6 @@ INTERNALDOCS =                                   \
   internals/MQTT.md                              \
   internals/MULTI-EV.md                          \
   internals/NEW-PROTOCOL.md                      \
-  internals/PEERS.md                             \
   internals/PORTING.md                           \
   internals/RATELIMITS.md                        \
   internals/README.md                            \

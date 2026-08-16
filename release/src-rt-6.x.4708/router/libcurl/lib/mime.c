@@ -1123,7 +1123,7 @@ CURLcode Curl_mime_duppart(struct Curl_easy *data,
   curl_mime *mime;
   curl_mimepart *d;
   const curl_mimepart *s;
-  CURLcode result = CURLE_OK;
+  CURLcode res = CURLE_OK;
 
   DEBUGASSERT(dst);
 
@@ -1132,67 +1132,66 @@ CURLcode Curl_mime_duppart(struct Curl_easy *data,
   case MIMEKIND_NONE:
     break;
   case MIMEKIND_DATA:
-    result = curl_mime_data(dst, src->data, (size_t)src->datasize);
+    res = curl_mime_data(dst, src->data, (size_t)src->datasize);
     break;
   case MIMEKIND_FILE:
-    result = curl_mime_filedata(dst, src->data);
+    res = curl_mime_filedata(dst, src->data);
     /* Do not abort duplication if file is not readable. */
-    if(result == CURLE_READ_ERROR)
-      result = CURLE_OK;
+    if(res == CURLE_READ_ERROR)
+      res = CURLE_OK;
     break;
   case MIMEKIND_CALLBACK:
-    result = curl_mime_data_cb(dst, src->datasize, src->readfunc,
-                               src->seekfunc, src->freefunc, src->arg);
+    res = curl_mime_data_cb(dst, src->datasize, src->readfunc,
+                            src->seekfunc, src->freefunc, src->arg);
     break;
   case MIMEKIND_MULTIPART:
     /* No one knows about the cloned subparts, thus always attach ownership
        to the part. */
     mime = curl_mime_init(data);
-    result = mime ? curl_mime_subparts(dst, mime) : CURLE_OUT_OF_MEMORY;
+    res = mime ? curl_mime_subparts(dst, mime) : CURLE_OUT_OF_MEMORY;
 
     /* Duplicate subparts. */
-    for(s = ((curl_mime *)src->arg)->firstpart; !result && s;
-        s = s->nextpart) {
+    for(s = ((curl_mime *)src->arg)->firstpart; !res && s; s = s->nextpart) {
       d = curl_mime_addpart(mime);
-      result = d ? Curl_mime_duppart(data, d, s) : CURLE_OUT_OF_MEMORY;
+      res = d ? Curl_mime_duppart(data, d, s) : CURLE_OUT_OF_MEMORY;
     }
     break;
   default:  /* Invalid kind: should not occur. */
     DEBUGF(infof(data, "invalid MIMEKIND* attempt"));
-    result = CURLE_BAD_FUNCTION_ARGUMENT;  /* Internal error? */
+    res = CURLE_BAD_FUNCTION_ARGUMENT;  /* Internal error? */
     break;
   }
 
   /* Duplicate headers. */
-  if(!result && src->userheaders) {
+  if(!res && src->userheaders) {
     struct curl_slist *hdrs = Curl_slist_duplicate(src->userheaders);
 
     if(!hdrs)
-      result = CURLE_OUT_OF_MEMORY;
+      res = CURLE_OUT_OF_MEMORY;
     else {
       /* No one but this procedure knows about the new header list,
          so always take ownership. */
-      result = curl_mime_headers(dst, hdrs, TRUE);
-      if(result)
+      res = curl_mime_headers(dst, hdrs, TRUE);
+      if(res)
         curl_slist_free_all(hdrs);
     }
   }
 
-  if(!result) {
+  if(!res) {
     /* Duplicate other fields. */
     dst->encoder = src->encoder;
-    result = curl_mime_type(dst, src->mimetype);
+    res = curl_mime_type(dst, src->mimetype);
   }
-  if(!result)
-    result = curl_mime_name(dst, src->name);
-  if(!result)
-    result = curl_mime_filename(dst, src->filename);
+  if(!res)
+    res = curl_mime_name(dst, src->name);
+  if(!res)
+    res = curl_mime_filename(dst, src->filename);
 
   /* If an error occurred, rollback. */
-  if(result)
+  if(res)
     Curl_mime_cleanpart(dst);
 
-  return result;
+  return res;
 }
 
 /*
@@ -1202,7 +1201,9 @@ CURLcode Curl_mime_duppart(struct Curl_easy *data,
 /* Create a mime handle. */
 curl_mime *curl_mime_init(void *easy)
 {
-  curl_mime *mime = curlx_malloc(sizeof(*mime));
+  curl_mime *mime;
+
+  mime = (curl_mime *)curlx_malloc(sizeof(*mime));
 
   if(mime) {
     mime->parent = NULL;
@@ -1239,7 +1240,7 @@ curl_mimepart *curl_mime_addpart(curl_mime *mime)
   if(!mime)
     return NULL;
 
-  part = curlx_malloc(sizeof(*part));
+  part = (curl_mimepart *)curlx_malloc(sizeof(*part));
 
   if(part) {
     Curl_mime_initpart(part);
@@ -1691,52 +1692,6 @@ static bool content_type_match(const char *contenttype,
   return FALSE;
 }
 
-static CURLcode add_content_disposition(struct Curl_easy *data,
-                                        curl_mimepart *part,
-                                        const char *disposition,
-                                        const char *contenttype,
-                                        enum mimestrategy strategy)
-{
-  if(!disposition)
-    if(part->filename || part->name ||
-       (contenttype && !curl_strnequal(contenttype, "multipart/", 10)))
-      disposition = DISPOSITION_DEFAULT;
-  if(disposition && curl_strequal(disposition, "attachment") &&
-     !part->name && !part->filename)
-    disposition = NULL;
-  if(disposition) {
-    CURLcode result = CURLE_OK;
-    char *name = NULL;
-    char *filename = NULL;
-
-    if(part->name) {
-      name = escape_string(data, part->name, strategy);
-      if(!name)
-        return CURLE_OUT_OF_MEMORY;
-    }
-    if(part->filename) {
-      filename = escape_string(data, part->filename, strategy);
-      if(!filename)
-        result = CURLE_OUT_OF_MEMORY;
-    }
-    if(!result)
-      result = Curl_mime_add_header(&part->curlheaders,
-                                    "Content-Disposition: %s%s%s%s%s%s%s",
-                                    disposition,
-                                    name ? "; name=\"" : "",
-                                    name ? name : "",
-                                    name ? "\"" : "",
-                                    filename ? "; filename=\"" : "",
-                                    filename ? filename : "",
-                                    filename ? "\"" : "");
-    curlx_safefree(name);
-    curlx_safefree(filename);
-    if(result)
-      return result;
-  }
-  return CURLE_OK;
-}
-
 CURLcode Curl_mime_prepare_headers(struct Curl_easy *data,
                                    curl_mimepart *part,
                                    const char *contenttype,
@@ -1795,10 +1750,42 @@ CURLcode Curl_mime_prepare_headers(struct Curl_easy *data,
 
   /* Issue content-disposition header only if not already set by caller. */
   if(!search_header(part->userheaders, STRCONST("Content-Disposition"))) {
-    result = add_content_disposition(data, part, disposition,
-                                     contenttype, strategy);
-    if(result)
-      return result;
+    if(!disposition)
+      if(part->filename || part->name ||
+         (contenttype && !curl_strnequal(contenttype, "multipart/", 10)))
+        disposition = DISPOSITION_DEFAULT;
+    if(disposition && curl_strequal(disposition, "attachment") &&
+       !part->name && !part->filename)
+      disposition = NULL;
+    if(disposition) {
+      char *name = NULL;
+      char *filename = NULL;
+
+      if(part->name) {
+        name = escape_string(data, part->name, strategy);
+        if(!name)
+          result = CURLE_OUT_OF_MEMORY;
+      }
+      if(!result && part->filename) {
+        filename = escape_string(data, part->filename, strategy);
+        if(!filename)
+          result = CURLE_OUT_OF_MEMORY;
+      }
+      if(!result)
+        result = Curl_mime_add_header(&part->curlheaders,
+                                      "Content-Disposition: %s%s%s%s%s%s%s",
+                                      disposition,
+                                      name ? "; name=\"" : "",
+                                      name ? name : "",
+                                      name ? "\"" : "",
+                                      filename ? "; filename=\"" : "",
+                                      filename ? filename : "",
+                                      filename ? "\"" : "");
+      curlx_safefree(name);
+      curlx_safefree(filename);
+      if(result)
+        return result;
+    }
   }
 
   /* Issue Content-Type header. */
@@ -1909,7 +1896,7 @@ static CURLcode cr_mime_read(struct Curl_easy *data,
   /* Once we have errored, we will return the same error forever */
   if(ctx->errored) {
     CURL_TRC_READ(data, "cr_mime_read(len=%zu) is errored -> %d, eos=0",
-                  blen, (int)ctx->error_result);
+                  blen, ctx->error_result);
     *pnread = 0;
     *peos = FALSE;
     return ctx->error_result;
@@ -1940,7 +1927,7 @@ static CURLcode cr_mime_read(struct Curl_easy *data,
   else if(blen <= 4) {
     /* Curl_mime_read() may go into an infinite loop when reading
      * via a base64 encoder, as it stalls when the read buffer is too small
-     * to contain a complete 3-byte encoding. Read into a larger buffer
+     * to contain a complete 3 byte encoding. Read into a larger buffer
      * and use that until empty. */
     CURL_TRC_READ(data, "cr_mime_read(len=%zu), small read, using tmp", blen);
     nread = Curl_mime_read(tmp, 1, sizeof(tmp), ctx->part);
@@ -2026,8 +2013,8 @@ static CURLcode cr_mime_read(struct Curl_easy *data,
   }
 
   CURL_TRC_READ(data, "cr_mime_read(len=%zu, total=%" FMT_OFF_T
-                ", read=%" FMT_OFF_T ") -> %d, %zu, %d", blen,
-                ctx->total_len, ctx->read_len, (int)result, *pnread, *peos);
+                ", read=%" FMT_OFF_T ") -> %d, %zu, %d",
+                blen, ctx->total_len, ctx->read_len, result, *pnread, *peos);
   return result;
 }
 

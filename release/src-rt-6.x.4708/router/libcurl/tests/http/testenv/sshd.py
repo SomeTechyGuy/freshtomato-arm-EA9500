@@ -74,7 +74,6 @@ class Sshd:
         ]
         self._user_key_files = []
         self._user_pub_files = []
-        self._error_fd = None
         self._process = None
 
         self.clear_logs()
@@ -133,8 +132,7 @@ class Sshd:
                 self._host_key_files.append(key_file)
                 pub_file = f'{key_file}.pub'
                 self._host_pub_files.append(pub_file)
-                with open(pub_file) as fp:
-                    pubkey = fp.read()
+                pubkey = open(pub_file).read()
                 # fd_known.write(f'[127.0.0.1]:{self.port} {pubkey}')
                 fd_known.write(f'[{self.env.domain1.lower()}]:{self.port} {pubkey}')
                 fd_unknown.write(f'dummy.invalid {pubkey}')
@@ -161,25 +159,17 @@ class Sshd:
             self._user_pub_files.append(f'{key_file}.pub')
         with open(self._auth_keys, 'w') as fd:
             os.chmod(self._auth_keys, stat.S_IRUSR | stat.S_IWUSR)
-            with open(self._user_pub_files[0]) as fp:
-                pubkey = fp.read()
+            pubkey = open(self._user_pub_files[0]).read()
             fd.write(pubkey)
-
-    def close_log(self):
-        if self._error_fd:
-            self._error_fd.close()
-            self._error_fd = None
 
     def clear_logs(self):
         self._rmf(self._sshd_log)
 
     def dump_log(self):
         lines = ['>>--sshd log ----------------------------------------------\n']
-        with open(self._sshd_log) as fd:
-            lines.extend(fd.readlines())
+        lines.extend(open(self._sshd_log))
         lines.extend(['>>--curl log ----------------------------------------------\n'])
-        with open(os.path.join(self._tmp_dir, 'curl.stderr')) as fd:
-            lines.extend(fd.readlines())
+        lines.extend(open(os.path.join(self._tmp_dir, 'curl.stderr')))
         lines.append('<<-------------------------------------------------------\n')
         return ''.join(lines)
 
@@ -203,7 +193,7 @@ class Sshd:
             self._process.terminate()
             self._process.wait(timeout=2)
             self._process = None
-        self.close_log()
+            return not wait_dead or True
         return True
 
     def restart(self):
@@ -241,8 +231,8 @@ class Sshd:
         run_env = os.environ.copy()
         # does not have any effect, sadly
         # run_env['HOME'] = f'{self._home_dir}'
-        self._error_fd = open(self._sshd_log, 'a')
-        self._process = subprocess.Popen(args=args, stderr=self._error_fd, env=run_env)
+        procerr = open(self._sshd_log, 'a')
+        self._process = subprocess.Popen(args=args, stderr=procerr, env=run_env)
         if self._process.returncode is not None:
             return False
         return self.wait_live(timeout=timedelta(seconds=Env.SERVER_TIMEOUT))

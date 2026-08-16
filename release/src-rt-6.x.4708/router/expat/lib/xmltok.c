@@ -25,7 +25,6 @@
    Copyright (c) 2022      Sean McBride <sean@rogue-research.com>
    Copyright (c) 2023      Hanno Böck <hanno@gentoo.org>
    Copyright (c) 2025      Alfonso Gregory <gfunni234@gmail.com>
-   Copyright (c) 2026      Nick Begg <nick@stunttruck.net>
    Licensed under the MIT license:
 
    Permission is  hereby granted,  free of charge,  to any  person obtaining
@@ -59,7 +58,6 @@
 #endif
 
 #include "internal.h"
-#include "fallthrough.h"
 #include "xmltok.h"
 #include "nametab.h"
 
@@ -643,7 +641,7 @@ unicode_byte_type(char hi, char lo) {
           *(*toP)++ = lo;                                                      \
           break;                                                               \
         }                                                                      \
-        EXPAT_FALLTHROUGH;                                                     \
+        /* fall through */                                                     \
       case 0x1:                                                                \
       case 0x2:                                                                \
       case 0x3:                                                                \
@@ -1559,7 +1557,7 @@ initScan(const ENCODING *const *encodingTable, const INIT_ENCODING *enc,
     case 0xEF: /* possibly first byte of UTF-8 BOM */
       if (INIT_ENC_INDEX(enc) == ISO_8859_1_ENC && state == XML_CONTENT_STATE)
         break;
-      EXPAT_FALLTHROUGH;
+      /* fall through */
     case 0x00:
     case 0x3C:
       return XML_TOK_PARTIAL;

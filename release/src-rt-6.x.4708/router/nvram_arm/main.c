@@ -28,12 +28,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <typedefs.h>
 
+#include <typedefs.h>
 #include <bcmnvram.h>
-#include <shutils.h>
-#include <shared.h>
 
 #define PROFILE_HEADER		"HDR1"
 #define PROFILE_HEADER_NEW	"HDR2"
@@ -41,24 +38,8 @@
 #define OUTFILE_NOT_WRITABLE	-2
 #define INVALID_CFG_FORMAT	-3
 
-#define PROFILE_ALIGN		1024
 
-static uint32_t read_le32(const unsigned char *p)
-{
-	return ((uint32_t)p[0]) |
-	       ((uint32_t)p[1] << 8) |
-	       ((uint32_t)p[2] << 16) |
-	       ((uint32_t)p[3] << 24);
-}
-
-static uint32_t read_le24(const unsigned char *p)
-{
-	return ((uint32_t)p[0]) |
-	       ((uint32_t)p[1] << 8) |
-	       ((uint32_t)p[2] << 16);
-}
-
-static int print_error(int rv, const char *infile, const char *outfile)
+int print_error(int rv, char *infile, const char *outfile)
 {
 	switch(rv) {
 		case INFILE_NOT_READABLE:
@@ -76,174 +57,105 @@ static int print_error(int rv, const char *infile, const char *outfile)
 	}
 }
 
-static unsigned char get_rand(void)
+unsigned char get_rand()
 {
-	unsigned char b = 0;
+	unsigned char buf[1];
+	FILE *fp;
 
-	if (f_read("/dev/urandom", &b, 1) != 1)
-		b = 0;
+	fp = fopen("/dev/urandom", "r");
+	if (fp == NULL)
+		return 0;
 
-	return b;
+	fread(buf, 1, 1, fp);
+	fclose(fp);
+
+	return buf[0];
 }
 
-static int nvram_save_new(const char *file, const char *buf)
+int nvram_save_new(char *file, char *buf)
 {
 	FILE *fp;
-	const char *name;
-	size_t count, i, len;
-	unsigned long filelen;
+	char *name;
+	unsigned long count, filelen, i;
 	unsigned char rand = 0, temp;
-	unsigned char outbuf[MAX_NVRAM_SPACE];
 
-	if ((fp = fopen(file, "wb")) == NULL)
-		return OUTFILE_NOT_WRITABLE;
+	if ((fp = fopen(file, "w")) == NULL)
+		return -1;
 
 	count = 0;
-	for (name = buf; *name; ) {
-		len = strlen(name);
-		if (count > sizeof(outbuf) - (len + 1)) {
-			fclose(fp);
-			return INVALID_CFG_FORMAT;
-		}
-		count += len + 1;
-		name += len + 1;
+	for (name = buf; *name; name += strlen(name) + 1) {
+		count = count + strlen(name) + 1;
 	}
 
-	filelen = (count + (PROFILE_ALIGN - 1)) & ~(PROFILE_ALIGN - 1);
-
+	filelen = count + (1024 - count % 1024);
 	do {
 		rand = get_rand() % 30;
-	} while (rand > 7 && rand < 14);
+	}
+	while (rand > 7 && rand < 14);
 
-	if (safe_fwrite(PROFILE_HEADER_NEW, 1, 4, fp) != 4) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-
-	temp = (unsigned char)(filelen & 0xff);
-	if (safe_fwrite(&temp, 1, 1, fp) != 1) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-	temp = (unsigned char)((filelen >> 8) & 0xff);
-	if (safe_fwrite(&temp, 1, 1, fp) != 1) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-	temp = (unsigned char)((filelen >> 16) & 0xff);
-	if (safe_fwrite(&temp, 1, 1, fp) != 1) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-	if (safe_fwrite(&rand, 1, 1, fp) != 1) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-
+	fwrite(PROFILE_HEADER_NEW, 1, 4, fp);
+	fwrite(&filelen, 1, 3, fp);
+	fwrite(&rand, 1, 1, fp);
 	for (i = 0; i < count; i++) {
-		if (buf[i] == '\0')
-			outbuf[i] = 0xfd + get_rand() % 3;
+		if (buf[i] == 0x0)
+			buf[i] = 0xfd + get_rand() % 3;
 		else
-			outbuf[i] = (unsigned char)(0xff - (unsigned char)buf[i] + rand);
+			buf[i] = 0xff - buf[i] + rand;
 	}
-
-	if ((count > 0) && (safe_fwrite(outbuf, 1, count, fp) != count)) {
-		fclose(fp);
-		return OUTFILE_NOT_WRITABLE;
-	}
-
+	fwrite(buf, 1, count, fp);
 	for (i = count; i < filelen; i++) {
 		temp = 0xfd + get_rand() % 3;
-		if (safe_fwrite(&temp, 1, 1, fp) != 1) {
-			fclose(fp);
-			return OUTFILE_NOT_WRITABLE;
-		}
+		fwrite(&temp, 1, 1, fp);
 	}
-
-	if (fclose(fp) != 0)
-		return OUTFILE_NOT_WRITABLE;
+	fclose(fp);
 
 	return 0;
 }
 
-static int nvram_restore_new(const char *file, char *buf, size_t buflen, FILE *ofp)
+int nvram_restore_new(char *file, char *buf, FILE *ofp)
 {
 	FILE *fp;
-	unsigned char header[8];
-	char *p, *v;
-	size_t count, i;
-	uint32_t filelen;
-	unsigned char rand;
+	char header[8], *p, *v;
+	unsigned long count, filelen, *filelenptr, i;
+	unsigned char rand, *randptr;
 	unsigned long nbytes = 0;
 
-	if ((file == NULL) || (buf == NULL) || (buflen < 2))
-		return INVALID_CFG_FORMAT;
-
-	if ((fp = fopen(file, "rb")) == NULL)
+	if ((fp = fopen(file, "r+")) == NULL)
 		return INFILE_NOT_READABLE;
 
-	count = safe_fread(header, 1, sizeof(header), fp);
-	if (count < sizeof(header)) {
-		fclose(fp);
-		return INVALID_CFG_FORMAT;
+	count = fread(header, 1, 8, fp);
+	if (count >= 8 && strncmp(header, PROFILE_HEADER, 4) == 0) {
+		filelenptr = (unsigned long *)(header + 4);
+		fread(buf, 1, *filelenptr, fp);
 	}
-
-	if (memcmp(header, PROFILE_HEADER, 4) == 0) {
-		filelen = read_le32(header + 4);
-
-		if ((filelen == 0) || (filelen >= buflen)) {
-			fclose(fp);
-			return INVALID_CFG_FORMAT;
-		}
-
-		count = safe_fread(buf, 1, filelen, fp);
-		if (count != filelen) {
-			fclose(fp);
-			return INVALID_CFG_FORMAT;
-		}
-
-		buf[count] = '\0';
-	}
-	else if (memcmp(header, PROFILE_HEADER_NEW, 4) == 0) {
-		filelen = read_le24(header + 4);
-		rand = header[7];
-
-		if ((filelen == 0) || (filelen >= buflen)) {
-			fclose(fp);
-			return INVALID_CFG_FORMAT;
-		}
-
-		count = safe_fread(buf, 1, filelen, fp);
-		if (count != filelen) {
-			fclose(fp);
-			return INVALID_CFG_FORMAT;
-		}
+	else if (count >= 8 && strncmp(header, PROFILE_HEADER_NEW, 4) == 0) {
+		filelenptr = (unsigned long *)(header + 4);
+		filelen = *filelenptr & 0xffffff;
+		randptr = (unsigned char *)(header + 7);
+		rand = *randptr;
+		count = fread(buf, 1, filelen, fp);
 
 		for (i = 0; i < count; i++) {
-			if ((unsigned char)buf[i] >= 0xfd) {
+			if ((unsigned char) buf[i] > (0xfd - 0x1)) {
 				/* e.g.: to skip the case: 0x61 0x62 0x63 0x00 0x00 0x61 0x62 0x63 */
-				if ((i > 0) && (buf[i - 1] != '\0'))
-					buf[i] = '\0';
+				if (i > 0 && buf[i - 1] != 0x0)
+					buf[i] = 0x0;
 			}
-			else {
-				buf[i] = (char)((unsigned char)(0xff + rand - (unsigned char)buf[i]));
-			}
+			else
+				buf[i] = 0xff + rand - buf[i];
 		}
-
-		buf[count] = '\0';
 	}
 	else {
 		fclose(fp);
 		return INVALID_CFG_FORMAT;
 	}
-
 	fclose(fp);
 
 	p = buf;
 	while (*p) {
 		/* e.g.: to skip the case: 00 2e 30 2e 32 38 00 ff 77 61 6e */
-		if (((unsigned char)*p < 32) || ((unsigned char)*p > 127)) {
-			p++;
+		if (*p == '\0' || *p < 32 || *p > 127) {
+			p = p + 1;
 			continue;
 		}
 
@@ -267,22 +179,20 @@ static int nvram_restore_new(const char *file, char *buf, size_t buflen, FILE *o
 			else
 				nvram_unset(p);
 
-			p += strlen(p) + 1;
+			p = p + 1;
 		}
 	}
 
-	return (int)nbytes;
+	return nbytes;
 }
 
-static int nvram_restore_to_file(const char *file, const char *outfile, char *buf, size_t buflen)
+int nvram_restore_to_file(char *file, char *outfile, char *buf)
 {
 	FILE *ofp;
-	int rv;
-
-	if ((ofp = fopen(outfile, "w")) == NULL)
+	if ((ofp = fopen(outfile, "w+")) == NULL)
 		return OUTFILE_NOT_WRITABLE;
 
-	rv = nvram_restore_new(file, buf, buflen, ofp);
+	int rv = nvram_restore_new(file, buf, ofp);
 	fclose(ofp);
 
 	return rv;
@@ -321,8 +231,7 @@ int main(int argc, char **argv)
 		}
 		else if (!strcmp(*argv, "set")) {
 			if (*++argv) {
-				strlcpy(buf, *argv, sizeof(buf));
-				value = buf;
+				strncpy(value = buf, *argv, sizeof(buf));
 				name = strsep(&value, "=");
 				nvram_set(name, value);
 			}
@@ -337,33 +246,22 @@ int main(int argc, char **argv)
 		else if (!strcmp(*argv, "save")) {
 			if (*++argv) {
 				nvram_getall(buf, NVRAM_SPACE);
-				res = nvram_save_new(*argv, buf);
-				if (res != 0) {
-					ret = print_error(res, *argv, *argv);
-					break;
-				}
+				nvram_save_new(*argv, buf);
 			}
 		}
 		else if (!strcmp(*argv, "restore")) {
-			if (*++argv) {
-				res = nvram_restore_new(*argv, buf, sizeof(buf), NULL);
-				if (res < 0) {
-					ret = print_error(res, *argv, NULL);
-					break;
-				}
-			}
+			if (*++argv) 
+				nvram_restore_new(*argv, buf, NULL);
 		}
 		else if (!strcmp(*argv, "erase")) {
-			ret = eval("nvram_erase");
-			if (ret)
-				fprintf(stderr, "Error: nvram_erase failed\n");
+			system("nvram_erase");
 		}
-		else if ((!strcmp(*argv, "show")) || (!strcmp(*argv, "dump"))) {
+		else if (!strcmp(*argv, "show") || !strcmp(*argv, "dump")) {
 			nvram_getall(buf, sizeof(buf));
 			for (name = buf; *name; name += strlen(name) + 1)
 				puts(name);
 
-			size = (int)(sizeof(struct nvram_header) + (size_t)(name - buf));
+			size = sizeof(struct nvram_header) + (int)name - (int)buf;
 			if (**argv != 'd')
 				fprintf(stderr, "size: %d bytes (%d left)\n", size, MAX_NVRAM_SPACE - size);
 		}
@@ -371,7 +269,7 @@ int main(int argc, char **argv)
 			if (*++argv) {
 				name = *argv;
 				if (*++argv) {
-					res = nvram_restore_to_file(name, *argv, buf, sizeof(buf));
+					res = nvram_restore_to_file(name, *argv, buf);
 					ret = print_error(res, name, (const char *)*argv);
 				}
 			}

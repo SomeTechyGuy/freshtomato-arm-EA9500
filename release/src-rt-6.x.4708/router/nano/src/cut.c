@@ -31,7 +31,7 @@ void expunge(undo_type action)
 	openfile->placewewant = xplustabs();
 
 	/* When in the middle of a line, delete the current character. */
-	if (openfile->current->data[openfile->current_x]) {
+	if (openfile->current->data[openfile->current_x] != '\0') {
 		int charlen = char_length(openfile->current->data + openfile->current_x);
 		size_t line_len = strlen(openfile->current->data + openfile->current_x);
 #ifndef NANO_TINY
@@ -58,7 +58,8 @@ void expunge(undo_type action)
 			refresh_needed = TRUE;
 
 		/* Adjust the mark if it is after the cursor on the current line. */
-		if (openfile->mark == openfile->current && openfile->mark_x > openfile->current_x)
+		if (openfile->mark == openfile->current &&
+								openfile->mark_x > openfile->current_x)
 			openfile->mark_x -= charlen;
 #endif
 	/* Otherwise, when not at end of buffer, join this line with the next. */
@@ -66,7 +67,8 @@ void expunge(undo_type action)
 		linestruct *joining = openfile->current->next;
 
 		/* If there is a magic line, and we're before it: don't eat it. */
-		if (joining == openfile->filebot && openfile->current_x != 0 && !ISSET(NO_NEWLINES)) {
+		if (joining == openfile->filebot && openfile->current_x != 0 &&
+													!ISSET(NO_NEWLINES)) {
 #ifndef NANO_TINY
 			if (action == BACK)
 				add_undo(BACK, NULL);
@@ -126,7 +128,7 @@ void do_delete(void)
 	{
 		expunge(DEL);
 #ifdef ENABLE_UTF8
-		while (openfile->current->data[openfile->current_x] &&
+		while (openfile->current->data[openfile->current_x] != '\0' &&
 				is_zerowidth(openfile->current->data + openfile->current_x))
 			expunge(DEL);
 #endif
@@ -184,8 +186,8 @@ bool is_cuttable(bool test_cliff)
 void chop_word(bool forward)
 {
 	/* Remember the current cursor position. */
-	linestruct *was_current = openfile->current;
-	size_t was_x = openfile->current_x;
+	linestruct *is_current = openfile->current;
+	size_t is_current_x = openfile->current_x;
 	/* Remember where the cutbuffer is, then make it seem blank. */
 	linestruct *is_cutbuffer = cutbuffer;
 
@@ -197,18 +199,19 @@ void chop_word(bool forward)
 	 * edge instead, so that lines will not be joined unexpectedly. */
 	if (!forward) {
 		do_prev_word();
-		if (openfile->current != was_current) {
-			if (was_x > 0) {
-				openfile->current = was_current;
+		if (openfile->current != is_current) {
+			if (is_current_x > 0) {
+				openfile->current = is_current;
 				openfile->current_x = 0;
 			} else
 				openfile->current_x = strlen(openfile->current->data);
 		}
 	} else {
 		do_next_word(ISSET(AFTER_ENDS));
-		if (openfile->current != was_current && was_current->data[was_x]) {
-			openfile->current = was_current;
-			openfile->current_x = strlen(was_current->data);
+		if (openfile->current != is_current &&
+							is_current->data[is_current_x] != '\0') {
+			openfile->current = is_current;
+			openfile->current_x = strlen(is_current->data);
 		}
 	}
 
@@ -217,8 +220,8 @@ void chop_word(bool forward)
 	openfile->mark_x = openfile->current_x;
 
 	/* Put the cursor back where it was, so an undo will put it there too. */
-	openfile->current = was_current;
-	openfile->current_x = was_x;
+	openfile->current = is_current;
+	openfile->current_x = is_current_x;
 
 	/* Now kill the marked region and a word is gone. */
 	add_undo(CUT, NULL);
@@ -335,7 +338,7 @@ void extract_segment(linestruct *top, size_t top_x, linestruct *bot, size_t bot_
 		cutbottom->next = taken->next;
 		delete_node(taken);
 
-		if (cutbottom->next) {
+		if (cutbottom->next != NULL) {
 			cutbottom->next->prev = cutbottom;
 			cutbottom = last;
 		}
@@ -363,7 +366,7 @@ void extract_segment(linestruct *top, size_t top_x, linestruct *bot, size_t bot_
 	}
 
 	/* If the text doesn't end with a newline, and it should, add one. */
-	if (!ISSET(NO_NEWLINES) && openfile->filebot->data[0])
+	if (!ISSET(NO_NEWLINES) && openfile->filebot->data[0] != '\0')
 		new_magicline();
 }
 
@@ -381,7 +384,7 @@ void ingraft_buffer(linestruct *topline)
 #endif
 	linestruct *botline = topline;
 
-	while (botline->next)
+	while (botline->next != NULL)
 		botline = botline->next;
 
 	/* Add the size of the text to be grafted to the buffer size. */
@@ -438,7 +441,7 @@ void ingraft_buffer(linestruct *topline)
 	renumber_from(line);
 
 	/* If the text doesn't end with a newline, and it should, add one. */
-	if (!ISSET(NO_NEWLINES) && openfile->filebot->data[0])
+	if (!ISSET(NO_NEWLINES) && openfile->filebot->data[0] != '\0')
 		new_magicline();
 }
 
@@ -505,7 +508,7 @@ void do_snip(bool marked, bool until_eof, bool append)
 		/* When not at the end of a line, move the rest of this line into
 		 * the cutbuffer.  Otherwise, when not at the end of the buffer,
 		 * move just the "line separator" into the cutbuffer. */
-		if (line->data[openfile->current_x])
+		if (line->data[openfile->current_x] != '\0')
 			extract_segment(line, openfile->current_x, line, strlen(line->data));
 		else if (openfile->current != openfile->filebot) {
 			extract_segment(line, openfile->current_x, line->next, 0);

@@ -28,18 +28,11 @@ httpd_indexcgi.c -o index.cgi
 /* We don't use printf, as it pulls in >12 kb of code from uclibc (i386). */
 /* Currently malloc machinery is the biggest part of libc we pull in. */
 /* We have only one realloc and one strdup, any idea how to do without? */
-/* 2026: */
-/* Answer: by using getdents and mmap */
 
-/* Sizes
- * 2007: i386, static uclibc, approximate:
+/* Size (i386, static uclibc, approximate):
  *   text    data     bss     dec     hex filename
  *  13036      44    3052   16132    3f04 index.cgi
  *   2576       4    2048    4628    1214 index.cgi.o
- * 2026: i386, static musl, rewritten to not use malloc:
- *  19222      44    2988   22254    56ee index.cgi_before_mmap_rewrite
- *  12790      40     416   13246    33be index.cgi
- *   3291       0       4    3295     cdf index.cgi.o
  */
 
 #define _GNU_SOURCE 1  /* for strchrnul */
@@ -53,36 +46,6 @@ httpd_indexcgi.c -o index.cgi
 #include <stdio.h>
 #include <dirent.h>
 #include <time.h>
-#include <sys/mman.h>
-
-/* In order to avoid using malloc, we have to avoid opendir()
- * which in most implementations allocates its return value.
- * Thus, have to use Linux's getdents syscall directly.
- * It has an added benefit of a more efficient storage of filenames
- * (no pointers needed).
- */
-#include <fcntl.h>
-#include <sys/syscall.h>
-struct linux_dirent64 {
-	ino64_t        d_ino;
-	off64_t        d_off;
-	unsigned short d_reclen;
-	unsigned char  d_type;
-	char           d_name[];
-};
-
-static void full_write(int fd, const void *buf, size_t len)
-{
-	ssize_t cc;
-
-	while (len) {
-		cc = write(fd, buf, len);
-		if (cc < 0)
-			return;
-		buf = ((const char *)buf) + cc;
-		len -= cc;
-	}
-}
 
 /* Appearance of the table is controlled by style sheet *ONLY*,
  * formatting code uses <TAG class=CLASS> to apply style
@@ -126,78 +89,98 @@ static void full_write(int fd, const void *buf, size_t len)
 "col.dt { width:1% }"                                  \
 "</style>"                                             \
 
-typedef struct linux_dirent64 dir_list_t;
-/* reuse these fields for storing other values: */
-#define D_MODE  d_reclen
-#define D_SIZE  d_off
-#define D_MTIME d_ino
+typedef struct dir_list_t {
+	char  *dl_name;
+	mode_t dl_mode;
+	off_t  dl_size;
+	time_t dl_mtime;
+} dir_list_t;
 
-static int compare_dl(dir_list_t **aa, dir_list_t **bb)
+static int compare_dl(dir_list_t *a, dir_list_t *b)
 {
-	dir_list_t *a = *aa;
-	dir_list_t *b = *bb;
-
 	/* ".." is 'less than' any other dir entry */
-	if (strcmp(a->d_name, "..") == 0) {
+	if (strcmp(a->dl_name, "..") == 0) {
 		return -1;
 	}
-	if (strcmp(b->d_name, "..") == 0) {
+	if (strcmp(b->dl_name, "..") == 0) {
 		return 1;
 	}
-	if (S_ISDIR(a->D_MODE) != S_ISDIR(b->D_MODE)) {
+	if (S_ISDIR(a->dl_mode) != S_ISDIR(b->dl_mode)) {
 		/* 1 if b is a dir (and thus a is 'after' b, a > b),
 		 * else -1 (a < b) */
-		return (S_ISDIR(b->D_MODE) != 0) ? 1 : -1;
+		return (S_ISDIR(b->dl_mode) != 0) ? 1 : -1;
 	}
-	return strcmp(a->d_name, b->d_name);
+	return strcmp(a->dl_name, b->dl_name);
+}
+
+static char buffer[2*1024 > sizeof(STYLE_STR) ? 2*1024 : sizeof(STYLE_STR)];
+static char *dst = buffer;
+enum {
+	BUFFER_SIZE = sizeof(buffer),
+	HEADROOM = 64,
+};
+
+/* After this call, you have at least size + HEADROOM bytes available
+ * ahead of dst */
+static void guarantee(int size)
+{
+	if (buffer + (BUFFER_SIZE-HEADROOM) - dst >= size)
+		return;
+	write(STDOUT_FILENO, buffer, dst - buffer);
+	dst = buffer;
 }
 
 /* NB: formatters do not store terminating NUL! */
 
-static char *fmt_str(char *dst, const char *src)
+/* HEADROOM bytes are available after dst after this call */
+static void fmt_str(/*char *dst,*/ const char *src)
 {
 	unsigned len = strlen(src);
-	dst = mempcpy(dst, src, len);
-	return dst;
+	guarantee(len);
+	memcpy(dst, src, len);
+	dst += len;
 }
 
-static char *fmt_url(char *dst, const char *name)
+/* HEADROOM bytes after dst are available after this call */
+static void fmt_url(/*char *dst,*/ const char *name)
 {
 	while (*name) {
-		unsigned c = (unsigned char)*name++;
+		unsigned c = *name++;
+		guarantee(3);
+		*dst = c;
 		if ((c - '0') > 9 /* not a digit */
 		 && ((c|0x20) - 'a') > ('z' - 'a') /* not A-Z or a-z */
 		 && !strchr("._-+@", c)
 		) {
 			*dst++ = '%';
 			*dst++ = "0123456789ABCDEF"[c >> 4];
-			c = "0123456789ABCDEF"[c & 0xf];
+			*dst = "0123456789ABCDEF"[c & 0xf];
 		}
-		*dst++ = c;
+		dst++;
 	}
-	return dst;
 }
 
-static char *fmt_html(char *dst, const char *name)
+/* HEADROOM bytes are available after dst after this call */
+static void fmt_html(/*char *dst,*/ const char *name)
 {
 	while (*name) {
 		char c = *name++;
 		if (c == '<')
-			dst = fmt_str(dst, "&lt;");
+			fmt_str("&lt;");
 		else if (c == '>')
-			dst = fmt_str(dst, "&gt;");
+			fmt_str("&gt;");
 		else if (c == '&') {
-			dst = fmt_str(dst, "&amp;");
+			fmt_str("&amp;");
 		} else {
+			guarantee(1);
 			*dst++ = c;
 			continue;
 		}
 	}
-	return dst;
 }
 
 /* HEADROOM bytes are available after dst after this call */
-static char *fmt_ull(char *dst, unsigned long long n)
+static void fmt_ull(/*char *dst,*/ unsigned long long n)
 {
 	char buf[sizeof(n)*3 + 2];
 	char *p;
@@ -208,46 +191,36 @@ static char *fmt_ull(char *dst, unsigned long long n)
 		*--p = (n % 10) + '0';
 		n /= 10;
 	} while (n);
-	dst = fmt_str(dst,  p);
-	return dst;
+	fmt_str(/*dst,*/ p);
 }
 
-static char *fmt_02u(char *dst, unsigned n)
+/* Does not call guarantee - eats into headroom instead */
+static void fmt_02u(/*char *dst,*/ unsigned n)
 {
 	/* n %= 100; - not needed, callers don't pass big n */
 	dst[0] = (n / 10) + '0';
 	dst[1] = (n % 10) + '0';
 	dst += 2;
-	return dst;
 }
 
-static char *fmt_04u(char *dst, unsigned n)
+/* Does not call guarantee - eats into headroom instead */
+static void fmt_04u(/*char *dst,*/ unsigned n)
 {
 	/* n %= 10000; - not needed, callers don't pass big n */
-	dst = fmt_02u(dst, n / 100);
-	dst = fmt_02u(dst, n % 100);
-	return dst;
+	fmt_02u(n / 100);
+	fmt_02u(n % 100);
 }
-
-enum {
-	/* Must be >= 64k (all Linux arches have pages <= 64k) */
-	BUFFER_SIZE = 8 * 1024*1024,
-//one dirent is typically <= 100 bytes, 1M is enough for ~10k files
-//FIXME: change code to *iterate* getdents64 if need to support giant file lists
-};
 
 int main(int argc, char **argv)
 {
-	char *buffer, *dst;
-	char *location;
-	dir_list_t **dir_list;
+	dir_list_t *dir_list;
 	dir_list_t *cdir;
-	int dir_list_count;
+	unsigned dir_list_count;
 	unsigned count_dirs;
 	unsigned count_files;
 	unsigned long long size_total;
-	int dirfd;
-	long nread, byte_pos;
+	DIR *dirp;
+	char *location;
 
 	location = getenv("REQUEST_URI");
 	if (!location)
@@ -270,75 +243,47 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	dirfd = open(".", O_RDONLY | O_DIRECTORY);
-	if (dirfd == -1)
-		return - dirfd;
-
-	/* Allocate 3 BUFFER_SIZE regions, with holes between them:
-	 * 1: *dir_list_t[] array
-	 * 2: sequence of dir_list_t's as read by getdents (not an array - variable length items)
-	 * 3: output char buffer
-	 * Importantly, the mmap size is large, but mmap is NOT physically preallocated.
-	 * THis way, we'll use only three pages of data is there are not that many files
-	 * (the rest of mapped regions will be left unmapped, since it is not accessed).
-	 */
-//TODO: add MAP_NORESERVE, MAP_UNINITIALIZED flags?
-	buffer = mmap(NULL, 5*BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	if (buffer == MAP_FAILED)
+	dirp = opendir(".");
+	if (!dirp)
 		return 1;
-
-	dir_list = (void*)buffer;
-	munmap(buffer + BUFFER_SIZE, BUFFER_SIZE);
-
-	buffer += 2*BUFFER_SIZE;
-	munmap(buffer + BUFFER_SIZE, BUFFER_SIZE);
-
-	nread = syscall(SYS_getdents64, dirfd, buffer, BUFFER_SIZE);
-	if (nread <= 0)
-		return - nread;
-//FIXME: we simply won't see any files which did not fit into BUFFER_SIZE
-
+	dir_list = NULL;
 	dir_list_count = 0;
-	byte_pos = 0;
-	while (byte_pos < nread) {
-		struct linux_dirent64 *dp;
+	while (1) {
+		struct dirent *dp;
 		struct stat sb;
 
-		dp = (struct linux_dirent64 *) (buffer + byte_pos);
-		byte_pos += dp->d_reclen; /* NB: using this before overwriting it with mode! */
-
+		dp = readdir(dirp);
+		if (!dp)
+			break;
 		if (dp->d_name[0] == '.' && !dp->d_name[1])
 			continue;
 		if (stat(dp->d_name, &sb) != 0)
 			continue;
-//fprintf(stderr, "%d '%s'\n", dir_list_count, dp->d_name);
-
-		dp->d_off    = sb.st_size;
-		dp->d_reclen = sb.st_mode;
-		dp->d_ino    = sb.st_mtime;
-		dir_list[dir_list_count] = dp;
+		dir_list = realloc(dir_list, (dir_list_count + 1) * sizeof(dir_list[0]));
+		dir_list[dir_list_count].dl_name = strdup(dp->d_name);
+		dir_list[dir_list_count].dl_mode = sb.st_mode;
+		dir_list[dir_list_count].dl_size = sb.st_size;
+		dir_list[dir_list_count].dl_mtime = sb.st_mtime;
 		dir_list_count++;
 	}
-	//close(dirfd);
+	closedir(dirp);
+
 	qsort(dir_list, dir_list_count, sizeof(dir_list[0]), (void*)compare_dl);
 
-	buffer += 2*BUFFER_SIZE;
-	dst = buffer;
-
-	dst = fmt_str(dst,
+	fmt_str(
 		"" /* Additional headers (currently none) */
 		"\r\n" /* Mandatory empty line after headers */
 		"<html><head><title>Index of ");
 	/* Guard against directories with &, > etc */
-	dst = fmt_html(dst, location);
-	dst = fmt_str(dst,
+	fmt_html(location);
+	fmt_str(
 		"</title>\n"
 		STYLE_STR
 		"</head>" "\n"
 		"<body>" "\n"
 		"<h1>Index of ");
-	dst = fmt_html(dst, location);
-	dst = fmt_str(dst,
+	fmt_html(location);
+	fmt_str(
 		"</h1>" "\n"
 		"<table>" "\n"
 		"<col class=nm><col class=sz><col class=dt>" "\n"
@@ -347,65 +292,53 @@ int main(int argc, char **argv)
 	count_dirs = 0;
 	count_files = 0;
 	size_total = 0;
-	while (--dir_list_count >= 0) {
+	cdir = dir_list;
+	while (dir_list_count--) {
 		struct tm *ptm;
-		time_t tt;
 
-		cdir = *dir_list++;
-//fprintf(stderr, "%d '%s'\n", dir_list_count, cdir->d_name);
-		if (S_ISDIR(cdir->D_MODE)) {
+		if (S_ISDIR(cdir->dl_mode)) {
 			count_dirs++;
-		} else if (S_ISREG(cdir->D_MODE)) {
+		} else if (S_ISREG(cdir->dl_mode)) {
 			count_files++;
-			size_total += cdir->D_SIZE;
+			size_total += cdir->dl_size;
 		} else
-			continue;
-//fprintf(stderr, "%d '%s'\n", dir_list_count, cdir->d_name);
+			goto next;
 
-		dst = fmt_str(dst, "<tr><td class=nm><a href='");
-		dst = fmt_url(dst, cdir->d_name); /* %20 etc */
-		if (S_ISDIR(cdir->D_MODE))
+		fmt_str("<tr><td class=nm><a href='");
+		fmt_url(cdir->dl_name); /* %20 etc */
+		if (S_ISDIR(cdir->dl_mode))
 			*dst++ = '/';
-		dst = fmt_str(dst, "'>");
-		dst = fmt_html(dst, cdir->d_name); /* &lt; etc */
-		if (S_ISDIR(cdir->D_MODE))
+		fmt_str("'>");
+		fmt_html(cdir->dl_name); /* &lt; etc */
+		if (S_ISDIR(cdir->dl_mode))
 			*dst++ = '/';
-		dst = fmt_str(dst, "</a><td class=sz>");
-		if (S_ISREG(cdir->D_MODE))
-			dst = fmt_ull(dst, cdir->D_SIZE);
-		dst = fmt_str(dst, "<td class=dt>");
-		if (sizeof(cdir->D_MTIME) == sizeof(tt))
-			ptm = gmtime((time_t*)&cdir->D_MTIME);
-		else {
-			tt = cdir->D_MTIME;
-			ptm = gmtime(&tt);
-		}
-		dst = fmt_04u(dst, 1900 + ptm->tm_year); *dst++ = '-';
-		dst = fmt_02u(dst, ptm->tm_mon + 1); *dst++ = '-';
-		dst = fmt_02u(dst, ptm->tm_mday); *dst++ = ' ';
-		dst = fmt_02u(dst, ptm->tm_hour); *dst++ = ':';
-		dst = fmt_02u(dst, ptm->tm_min); *dst++ = ':';
-		dst = fmt_02u(dst, ptm->tm_sec);
+		fmt_str("</a><td class=sz>");
+		if (S_ISREG(cdir->dl_mode))
+			fmt_ull(cdir->dl_size);
+		fmt_str("<td class=dt>");
+		ptm = gmtime(&cdir->dl_mtime);
+		fmt_04u(1900 + ptm->tm_year); *dst++ = '-';
+		fmt_02u(ptm->tm_mon + 1); *dst++ = '-';
+		fmt_02u(ptm->tm_mday); *dst++ = ' ';
+		fmt_02u(ptm->tm_hour); *dst++ = ':';
+		fmt_02u(ptm->tm_min); *dst++ = ':';
+		fmt_02u(ptm->tm_sec);
 		*dst++ = '\n';
 
-		/* Flush after every 256 files (typically around 50k of output) */
-		if ((dir_list_count & 0xff) == 0) {
-			full_write(STDOUT_FILENO, buffer, dst - buffer);
-			dst = buffer;
-		}
+ next:
+		cdir++;
 	}
 
-	dst = fmt_str(dst, "<tr class=foot><th class=cnt>Files: ");
-	dst = fmt_ull(dst, count_files);
+	fmt_str("<tr class=foot><th class=cnt>Files: ");
+	fmt_ull(count_files);
 	/* count_dirs - 1: we don't want to count ".." */
-	dst = fmt_str(dst, ", directories: ");
-	dst = fmt_ull(dst, count_dirs - 1);
-	dst = fmt_str(dst, "<th class=sz>");
-	dst = fmt_ull(dst, size_total);
-	dst = fmt_str(dst, "<th class=dt>\n");
+	fmt_str(", directories: ");
+	fmt_ull(count_dirs - 1);
+	fmt_str("<th class=sz>");
+	fmt_ull(size_total);
+	fmt_str("<th class=dt>\n");
 	/* "</table></body></html>" - why bother? */
-
-	full_write(STDOUT_FILENO, buffer, dst - buffer);
+	guarantee(BUFFER_SIZE * 2); /* flush */
 
 	return 0;
 }

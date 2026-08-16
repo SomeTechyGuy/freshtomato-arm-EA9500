@@ -384,7 +384,7 @@ parse_opts(int argc, char **argv)
 }
 
 static void
-do_term(evutil_socket_t sig, short events, void *arg)
+do_term(int sig, short events, void *arg)
 {
 	struct event_base *base = arg;
 	event_base_loopbreak(base);
@@ -519,12 +519,7 @@ main(int argc, char **argv)
 		}
 
 		addr.sun_family = AF_UNIX;
-		if (strlen(o.unixsock) >= sizeof(addr.sun_path)) {
-			fprintf(stderr, "Unix socket path too long\n");
-			return 1;
-		}
-		strncpy(addr.sun_path, o.unixsock, sizeof(addr.sun_path) - 1);
-		addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
+		strcpy(addr.sun_path, o.unixsock);
 
 		lev = evconnlistener_new_bind(base, NULL, NULL,
 			LEV_OPT_CLOSE_ON_FREE, -1,

@@ -27,6 +27,8 @@
 
 #include <langinfo.h>
 #include <locale.h>
+#include <wchar.h>
+#include <wctype.h>
 #include <stdckdint.h>
 #include <stdcountof.h>
 #include <stdint.h>
@@ -119,47 +121,22 @@
 #define NEWLINE_CHAR '\n'
 #define WIDE_NEWLINE_CHAR L'\n'
 
-/* Use Gnulib <uchar.h> if outside glibc and not avoided by the app.  */
-#if defined _LIBC || defined _REGEX_AVOID_UCHAR_H
-# include <wchar.h>
-# include <wctype.h>
-#else
-# include <uchar.h>
-# undef wctype_t
-# define wchar_t char32_t
-# define wctype_t c32_type_test_t
-#endif
-
+/* Rename to standard API for using out of glibc.  */
 #ifndef _LIBC
 # undef __wctype
 # undef __iswalnum
 # undef __iswctype
 # undef __towlower
 # undef __towupper
-# undef __btowc
-# undef __mbrtowc
-# undef __wcrtomb
-# undef __regfree
+# define __wctype wctype
+# define __iswalnum iswalnum
+# define __iswctype iswctype
+# define __towlower towlower
+# define __towupper towupper
+# define __btowc btowc
+# define __mbrtowc mbrtowc
+# define __wcrtomb wcrtomb
 # define __regfree regfree
-# ifdef _REGEX_AVOID_UCHAR_H
-#  define __wctype wctype
-#  define __iswalnum iswalnum
-#  define __iswctype iswctype
-#  define __towlower towlower
-#  define __towupper towupper
-#  define __btowc btowc
-#  define __mbrtowc mbrtowc
-#  define __wcrtomb wcrtomb
-# else
-#  define __wctype c32_get_type_test
-#  define __iswalnum c32isalnum
-#  define __iswctype c32_apply_type_test
-#  define __towlower c32tolower
-#  define __towupper c32toupper
-#  define __btowc btoc32
-#  define __mbrtowc mbrtoc32
-#  define __wcrtomb c32rtomb
-# endif
 #endif /* not _LIBC */
 
 /* Types related to integers.  Unless protected by #ifdef _LIBC, the
@@ -195,11 +172,7 @@
    reindenting a lot of regex code that formerly used 'int'.  */
 typedef regoff_t Idx;
 #ifdef _REGEX_LARGE_OFFSETS
-# ifdef SSIZE_MAX
-#  define IDX_MAX SSIZE_MAX
-# else
-#  define IDX_MAX ((Idx) ((size_t) -1 / 2))
-# endif
+# define IDX_MAX SSIZE_MAX
 #else
 # define IDX_MAX INT_MAX
 #endif
@@ -463,11 +436,7 @@ typedef struct re_dfa_t re_dfa_t;
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
-#if defined _LIBC || HAVE_MALLOC_0_NONNULL
-# define re_malloc(t,n) ((t *) malloc ((n) * sizeof (t)))
-#else
-# define re_malloc(t,n) ((t *) malloc ((n) * sizeof (t) + ((n) == 0)))
-#endif
+#define re_malloc(t,n) ((t *) malloc ((n) * sizeof (t)))
 #define re_realloc(p,t,n) ((t *) realloc (p, (n) * sizeof (t)))
 #define re_free(p) free (p)
 
@@ -804,8 +773,8 @@ __attribute__ ((pure, unused))
 re_string_wchar_at (const re_string_t *pstr, Idx idx)
 {
   if (pstr->mb_cur_max == 1)
-    return pstr->mbs[idx];
-  return pstr->wcs[idx];
+    return (wint_t) pstr->mbs[idx];
+  return (wint_t) pstr->wcs[idx];
 }
 
 #ifdef _LIBC

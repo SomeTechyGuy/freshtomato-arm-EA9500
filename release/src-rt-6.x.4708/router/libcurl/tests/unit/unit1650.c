@@ -102,16 +102,16 @@ static CURLcode test_unit1650(const char *arg)
    "\x6c\x04\x63\x75\x72\x6c\x00\x00\x05\x00\x01\xc0\x0c\x00\x05\x00"
    "\x01\x00\x00\x00\x37\x00\x11\x08\x61\x6e\x79\x77\x68\x65\x72\x65"
    "\x06\x72\x65\x61\x6c\x6c\x79\x00", 56,
-   CURL_DNS_TYPE_A, DOH_OK, "anywhere.really (55)"},
+   CURL_DNS_TYPE_A, DOH_OK, "anywhere.really "},
 
-  {DNS_FOO_EXAMPLE_COM, 49, CURL_DNS_TYPE_A, DOH_OK, "127.0.0.1 (55)"},
+  {DNS_FOO_EXAMPLE_COM, 49, CURL_DNS_TYPE_A, DOH_OK, "127.0.0.1 "},
 
   {"\x00\x00\x01\x00\x00\x01\x00\x01\x00\x00\x00\x00\x04\x61\x61\x61"
    "\x61\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63\x6f\x6d\x00\x00\x1c"
-   "\x00\x01\xc0\x0c\x00\x1c\x00\x01\x00\x00\x01\x37\x00\x10\x20\x20"
+   "\x00\x01\xc0\x0c\x00\x1c\x00\x01\x00\x00\x00\x37\x00\x10\x20\x20"
    "\x20\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x20", 62,
    CURL_DNS_TYPE_AAAA, DOH_OK,
-   "2020:2020:0000:0000:0000:0000:0000:2020 (311)" },
+   "2020:2020:0000:0000:0000:0000:0000:2020 " },
 
   {"\x00\x00\x01\x00\x00\x01\x00\x01\x00\x00\x00\x00\x04\x63\x75\x72"
    "\x6c\x04\x63\x75\x72\x6c\x00\x00\x05\x00\x01\xc0\x0c\x00\x05\x00"
@@ -129,19 +129,19 @@ static CURLcode test_unit1650(const char *arg)
 
    62 + 30,
    CURL_DNS_TYPE_AAAA, DOH_OK,
-   "2020:2020:0000:0000:0000:0000:0000:2020 (55)" },
+   "2020:2020:0000:0000:0000:0000:0000:2020 " },
 
-  /* packet with ARCOUNT == 1, and a capped TTL */
+  /* packet with ARCOUNT == 1 */
   {"\x00\x00\x01\x00\x00\x01\x00\x01\x00\x00\x00\x01\x04\x61\x61\x61"
    "\x61\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63\x6f\x6d\x00\x00\x1c"
-   "\x00\x01\xc0\x0c\x00\x1c\x00\x01\x00\xff\xff\x37\x00\x10\x20\x20"
+   "\x00\x01\xc0\x0c\x00\x1c\x00\x01\x00\x00\x00\x37\x00\x10\x20\x20"
    "\x20\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x20"
    LABEL_TEST LABEL_HOST LABEL_NAME DNSAAAA_EPILOGUE "\x00\x00\x00\x01"
    "\00\x04\x01\x01\x01\x01", /* RDDATA */
 
    62 + 30,
    CURL_DNS_TYPE_AAAA, DOH_OK,
-   "2020:2020:0000:0000:0000:0000:0000:2020 (86400)" },
+   "2020:2020:0000:0000:0000:0000:0000:2020 " },
 
   };
 
@@ -155,7 +155,7 @@ static CURLcode test_unit1650(const char *arg)
                                 buffer, sizeof(buffer), &size);
     if(rc != req[i].rc) {
       curl_mfprintf(stderr, "req %zu: Expected return code %d got %d\n", i,
-                    (int)req[i].rc, (int)rc);
+                    req[i].rc, rc);
       abort_if(rc != req[i].rc, "return code");
     }
     if(size != req[i].size) {
@@ -184,7 +184,7 @@ static CURLcode test_unit1650(const char *arg)
                          resp[i].type, &d);
     if(rc != resp[i].rc) {
       curl_mfprintf(stderr, "resp %zu: Expected return code %d got %d\n", i,
-                    (int)resp[i].rc, (int)rc);
+                    resp[i].rc, rc);
       abort_if(rc != resp[i].rc, "return code");
     }
     len = sizeof(buffer);
@@ -222,7 +222,6 @@ static CURLcode test_unit1650(const char *arg)
       len -= o;
       ptr += o;
     }
-    curl_msnprintf(ptr, len, "(%u)", d.ttl);
     de_cleanup(&d);
     if(resp[i].out && strcmp((const char *)buffer, resp[i].out)) {
       curl_mfprintf(stderr, "resp %zu: Expected %s got %s\n", i,
@@ -241,7 +240,7 @@ static CURLcode test_unit1650(const char *arg)
                          i, CURL_DNS_TYPE_A, &d);
     if(!rc) {
       /* none of them should work */
-      curl_mfprintf(stderr, "%zu: %d\n", i, (int)rc);
+      curl_mfprintf(stderr, "%zu: %d\n", i, rc);
       abort_if(!rc, "error rc");
     }
   }
@@ -255,7 +254,7 @@ static CURLcode test_unit1650(const char *arg)
                          sizeof(full49) - i - 1, CURL_DNS_TYPE_A, &d);
     if(!rc) {
       /* none of them should work */
-      curl_mfprintf(stderr, "2 %zu: %d\n", i, (int)rc);
+      curl_mfprintf(stderr, "2 %zu: %d\n", i, rc);
       abort_if(!rc, "error rc");
     }
   }
@@ -273,8 +272,7 @@ static CURLcode test_unit1650(const char *arg)
     curl_msnprintf((char *)buffer, sizeof(buffer),
                    "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
     if(rc || strcmp((const char *)buffer, "127.0.0.1")) {
-      curl_mfprintf(stderr, "bad address decoded: %s, rc == %d\n", buffer,
-                    (int)rc);
+      curl_mfprintf(stderr, "bad address decoded: %s, rc == %d\n", buffer, rc);
       abort_if(rc || strcmp((const char *)buffer, "127.0.0.1"), "bad address");
     }
     fail_if(d.numcname, "bad cname counter");

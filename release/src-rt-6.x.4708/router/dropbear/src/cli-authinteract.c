@@ -102,13 +102,13 @@ void recv_msg_userauth_info_request() {
 	buf_putint(ses.writepayload, num_prompts);
 
 	if (strlen(name) > 0) {
-		cleantext(name, 0);
+		cleantext(name);
 		fprintf(stderr, "%s", name);
 	}
 	m_free(name);
 
 	if (strlen(instruction) > 0) {
-		cleantext(instruction, 0);
+		cleantext(instruction);
 		fprintf(stderr, "%s", instruction);
 	}
 	m_free(instruction);
@@ -117,7 +117,7 @@ void recv_msg_userauth_info_request() {
 		unsigned int response_len = 0;
 		cli_ses.is_trivial_auth = 0;
 		prompt = buf_getstring(ses.payload, NULL);
-		cleantext(prompt, 0);
+		cleantext(prompt);
 
 		echo = buf_getbool(ses.payload);
 

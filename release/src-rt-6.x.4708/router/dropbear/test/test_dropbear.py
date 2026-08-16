@@ -38,15 +38,8 @@ def dropbear(request):
 	yield p
 	p.terminate()
 	print("Terminated dropbear. Flushing output:")
-	lines = [l.rstrip() for l in p.stderr]
-	for l in lines:
-		print(l)
-
-	for l in lines:
-		# Crude segfault detection to catch segfaults in server
-		# child processes.
-		assert "Aiee, segfault" not in l
-
+	for l in p.stderr:
+		print(l.rstrip())
 	print("Done")
 
 def dbclient(request, *args, **kwargs):

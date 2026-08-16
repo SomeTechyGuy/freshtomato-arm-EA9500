@@ -25,6 +25,13 @@
 
 #include "testtrace.h"
 
+static size_t sink2504(char *ptr, size_t size, size_t nmemb, void *ud)
+{
+  (void)ptr;
+  (void)ud;
+  return size * nmemb;
+}
+
 static void dump_cookies2504(CURL *h, const char *tag)
 {
   struct curl_slist *cookies = NULL;
@@ -61,17 +68,17 @@ static CURLcode test_lib2504(const char *URL)
 
   hdrs = curl_slist_append(hdrs, "Host: victim.internal");
   if(hdrs) {
-    easy_setopt(curl, CURLOPT_WRITEFUNCTION, tutil_throwaway_cb);
-    easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-    easy_setopt(curl, CURLOPT_HTTPHEADER, hdrs);
-    easy_setopt(curl, CURLOPT_URL, URL);
+    test_setopt(curl, CURLOPT_WRITEFUNCTION, sink2504);
+    test_setopt(curl, CURLOPT_COOKIEFILE, "");
+    test_setopt(curl, CURLOPT_HTTPHEADER, hdrs);
+    test_setopt(curl, CURLOPT_URL, URL);
 
     result = curl_easy_perform(curl);
     curl_mprintf("req1=%d\n", (int)result);
     dump_cookies2504(curl, "after request 1");
 
-    easy_setopt(curl, CURLOPT_HTTPHEADER, NULL);
-    easy_setopt(curl, CURLOPT_URL, URL);
+    test_setopt(curl, CURLOPT_HTTPHEADER, NULL);
+    test_setopt(curl, CURLOPT_URL, URL);
 
     result = curl_easy_perform(curl);
     curl_mprintf("req2=%d\n", (int)result);

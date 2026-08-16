@@ -82,16 +82,16 @@ static CURLcode test_lib541(const char *URL)
   }
 
   /* enable uploading */
-  easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+  test_setopt(curl, CURLOPT_UPLOAD, 1L);
 
   /* enable verbose */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* specify target */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* now specify which file to upload */
-  easy_setopt(curl, CURLOPT_READDATA, hd_src);
+  test_setopt(curl, CURLOPT_READDATA, hd_src);
 
   /* Now run off and do what you have been told! */
   result = curl_easy_perform(curl);

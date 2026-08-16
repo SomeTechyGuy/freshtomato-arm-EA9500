@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # This file is part of avahi.
 #
@@ -69,7 +69,6 @@ else
     test -f configure.ac~ && mv configure.ac~ configure.ac
 
     test "x$LIBTOOLIZE" = "x" && LIBTOOLIZE=libtoolize
-    test "x$MAKE" = "x" && MAKE=make
 
     "$LIBTOOLIZE" -c --force
     run_versioned aclocal "$AM_VERSION" -I common
@@ -80,6 +79,6 @@ else
     cd "$olddir"
     if test "x$NOCONFIGURE" = "x"; then
         $srcdir/configure "$@"
-        $MAKE clean
+        make clean
     fi
 fi

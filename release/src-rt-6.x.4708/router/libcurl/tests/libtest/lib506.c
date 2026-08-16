@@ -23,6 +23,8 @@
  ***************************************************************************/
 #include "first.h"
 
+#include "testutil.h"
+
 #define THREADS 2
 
 /* struct containing data of a thread */
@@ -68,7 +70,7 @@ static void t506_test_lock(CURL *curl, curl_lock_data data,
     pcounter = &user->cookie_counter;
     break;
   default:
-    curl_mfprintf(stderr, "lock: no such data: %d\n", (int)data);
+    curl_mfprintf(stderr, "lock: no such data: %d\n", data);
     return;
   }
 
@@ -107,7 +109,7 @@ static void t506_test_unlock(CURL *curl, curl_lock_data data, void *useptr)
     locknum = 2;
     break;
   default:
-    curl_mfprintf(stderr, "unlock: no such data: %d\n", (int)data);
+    curl_mfprintf(stderr, "unlock: no such data: %d\n", data);
     return;
   }
 
@@ -156,7 +158,7 @@ static void *t506_test_fire(void *ptr)
   if(result) {
     int i = 0;
     curl_mfprintf(stderr, "perform URL '%s' repeat %d failed, curlcode %d\n",
-                  tdata->url, i, (int)result);
+                  tdata->url, i, result);
   }
 
   curl_mprintf("CLEANUP\n");
@@ -239,21 +241,21 @@ static CURLcode test_lib506(const char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
   curl_mprintf("CURLOPT_SHARE\n");
-  easy_setopt(curl, CURLOPT_SHARE, share);
+  test_setopt(curl, CURLOPT_SHARE, share);
   curl_mprintf("CURLOPT_COOKIELIST injected_and_clobbered\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST,
+  test_setopt(curl, CURLOPT_COOKIELIST,
               "Set-Cookie: injected_and_clobbered=yes; "
               "domain=host.foo.com; expires=Sat Feb 2 11:56:27 GMT 2030");
   curl_mprintf("CURLOPT_COOKIELIST ALL\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "ALL");
+  test_setopt(curl, CURLOPT_COOKIELIST, "ALL");
   curl_mprintf("CURLOPT_COOKIELIST session\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "Set-Cookie: session=elephants");
+  test_setopt(curl, CURLOPT_COOKIELIST, "Set-Cookie: session=elephants");
   curl_mprintf("CURLOPT_COOKIELIST injected\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST,
+  test_setopt(curl, CURLOPT_COOKIELIST,
               "Set-Cookie: injected=yes; domain=host.foo.com; "
               "expires=Sat Feb 2 11:56:27 GMT 2030");
   curl_mprintf("CURLOPT_COOKIELIST SESS\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "SESS");
+  test_setopt(curl, CURLOPT_COOKIELIST, "SESS");
   curl_mprintf("CLEANUP\n");
   curl_easy_cleanup(curl);
 
@@ -283,14 +285,14 @@ static CURLcode test_lib506(const char *URL)
 
   url = tutil_suburl(URL, i);
   headers = sethost(NULL);
-  easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  easy_setopt(curl, CURLOPT_URL, url);
+  test_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  test_setopt(curl, CURLOPT_URL, url);
   curl_mprintf("CURLOPT_SHARE\n");
-  easy_setopt(curl, CURLOPT_SHARE, share);
+  test_setopt(curl, CURLOPT_SHARE, share);
   curl_mprintf("CURLOPT_COOKIEJAR\n");
-  easy_setopt(curl, CURLOPT_COOKIEJAR, jar);
+  test_setopt(curl, CURLOPT_COOKIEJAR, jar);
   curl_mprintf("CURLOPT_COOKIELIST FLUSH\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "FLUSH");
+  test_setopt(curl, CURLOPT_COOKIELIST, "FLUSH");
 
   curl_mprintf("PERFORM\n");
   curl_easy_perform(curl);
@@ -310,16 +312,16 @@ static CURLcode test_lib506(const char *URL)
   }
   url = tutil_suburl(URL, i);
   headers = sethost(NULL);
-  easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  easy_setopt(curl, CURLOPT_URL, url);
+  test_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  test_setopt(curl, CURLOPT_URL, url);
   curl_mprintf("CURLOPT_SHARE\n");
-  easy_setopt(curl, CURLOPT_SHARE, share);
+  test_setopt(curl, CURLOPT_SHARE, share);
   curl_mprintf("CURLOPT_COOKIELIST ALL\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "ALL");
+  test_setopt(curl, CURLOPT_COOKIELIST, "ALL");
   curl_mprintf("CURLOPT_COOKIEJAR\n");
-  easy_setopt(curl, CURLOPT_COOKIEFILE, jar);
+  test_setopt(curl, CURLOPT_COOKIEFILE, jar);
   curl_mprintf("CURLOPT_COOKIELIST RELOAD\n");
-  easy_setopt(curl, CURLOPT_COOKIELIST, "RELOAD");
+  test_setopt(curl, CURLOPT_COOKIELIST, "RELOAD");
 
   result = CURLE_OK;
 
@@ -367,8 +369,7 @@ test_cleanup:
   curl_mprintf("SHARE_CLEANUP\n");
   scode = curl_share_cleanup(share);
   if(scode != CURLSHE_OK)
-    curl_mfprintf(stderr, "curl_share_cleanup failed, code errno %d\n",
-                  (int)scode);
+    curl_mfprintf(stderr, "curl_share_cleanup failed, code errno %d\n", scode);
 
   curl_mprintf("GLOBAL_CLEANUP\n");
   curl_global_cleanup();

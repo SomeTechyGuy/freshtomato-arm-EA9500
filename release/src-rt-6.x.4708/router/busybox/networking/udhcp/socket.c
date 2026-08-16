@@ -90,8 +90,7 @@ int FAST_FUNC udhcp_listen_socket(/*uint32_t ip,*/ int port, const char *inf)
 		bb_simple_perror_msg_and_die("SO_BROADCAST");
 
 	/* SO_BINDTODEVICE doesn't work on ethernet aliases (ethN:M) */
-	colon = (char*)strrchr(inf, ':');
-	/* NB: inf can really be a *const* string if it's a default, but defaults have no ':' */
+	colon = strrchr(inf, ':');
 	if (colon)
 		*colon = '\0';
 

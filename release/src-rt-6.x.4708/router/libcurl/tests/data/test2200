@@ -28,7 +28,7 @@ mqtt
 mqtt
 </server>
 <name>
-MQTT SUBSCRIBE with user and password, not authorized
+MQTT SUBSCRIBE with user and password
 </name>
 <command option="binary-trace">
 mqtt://%HOSTIP:%MQTTPORT/%TESTNUMBER -u fakeuser:fakepasswd

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2026 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2009-2025 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -189,18 +189,14 @@ static int kek_unwrap_key(unsigned char *out, size_t *outlen,
     const unsigned char *in, size_t inlen,
     EVP_CIPHER_CTX *ctx)
 {
-    int blocklen = EVP_CIPHER_CTX_get_block_size(ctx);
+    size_t blocklen = EVP_CIPHER_CTX_get_block_size(ctx);
     unsigned char *tmp;
     int outl, rv = 0;
-
-    if (blocklen < 4)
-        return 0;
-
-    if (inlen < 2 * (size_t)blocklen) {
+    if (inlen < 2 * blocklen) {
         /* too small */
         return 0;
     }
-    if (inlen > INT_MAX || inlen % blocklen) {
+    if (inlen % blocklen) {
         /* Invalid size */
         return 0;
     }
@@ -354,11 +350,6 @@ int ossl_cms_RecipientInfo_pwri_crypt(const CMS_ContentInfo *cms,
 
     /* Finish password based key derivation to setup key in "ctx" */
 
-    if (algtmp == NULL) {
-        ERR_raise_data(ERR_LIB_CMS, CMS_R_INVALID_KEY_ENCRYPTION_PARAMETER,
-            "Missing KeyDerivationAlgorithm");
-        goto err;
-    }
     if (!EVP_PBE_CipherInit_ex(algtmp->algorithm,
             (char *)pwri->pass, (int)pwri->passlen,
             algtmp->parameter, kekctx, en_de,

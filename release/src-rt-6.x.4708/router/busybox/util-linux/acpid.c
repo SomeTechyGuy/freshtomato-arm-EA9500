@@ -145,7 +145,7 @@ struct globals {
 static void process_event(const char *event)
 {
 	struct stat st;
-	char *handler = concat_path_file(".", event);
+	char *handler = xasprintf("./%s", event);
 	const char *args[] = { "run-parts", handler, NULL };
 
 	// log the event

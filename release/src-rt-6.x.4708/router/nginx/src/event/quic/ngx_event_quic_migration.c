@@ -194,8 +194,6 @@ valid:
 
     path->validated = 1;
 
-    ngx_quic_set_connection_path(c, path);
-
     if (path->mtu_unvalidated) {
         path->mtu_unvalidated = 0;
         return ngx_quic_validate_path(c, path);
@@ -513,10 +511,9 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc->path = next;
     qc->path->tag = NGX_QUIC_PATH_ACTIVE;
 
-    if (next->validated) {
-        ngx_quic_set_connection_path(c, next);
+    ngx_quic_set_connection_path(c, next);
 
-    } else if (next->state != NGX_QUIC_PATH_VALIDATING) {
+    if (!next->validated && next->state != NGX_QUIC_PATH_VALIDATING) {
         if (ngx_quic_validate_path(c, next) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -809,6 +806,8 @@ ngx_quic_expire_path_validation(ngx_connection_t *c, ngx_quic_path_t *path)
 
         qc->path = bkp;
         qc->path->tag = NGX_QUIC_PATH_ACTIVE;
+
+        ngx_quic_set_connection_path(c, qc->path);
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic path seq:%uL addr:%V is restored from backup",

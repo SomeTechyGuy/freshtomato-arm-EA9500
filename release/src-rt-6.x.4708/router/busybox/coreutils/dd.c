@@ -272,6 +272,12 @@ static bool write_and_stats(const void *buf, size_t len, size_t obs,
 	return 1;
 }
 
+#if ENABLE_LFS
+# define XATOU_SFX xatoull_sfx
+#else
+# define XATOU_SFX xatoul_sfx
+#endif
+
 #if ENABLE_FEATURE_DD_IBS_OBS
 static int parse_comma_flags(char *val, const char *words, const char *error_in)
 {
@@ -451,15 +457,15 @@ int dd_main(int argc UNUSED_PARAM, char **argv)
 		/* These can be large: */
 		if (what == OP_count) {
 			G.flags |= FLAG_COUNT;
-			count = XATOOFF_SFX(val, cwbkMG_suffixes);
+			count = XATOU_SFX(val, cwbkMG_suffixes);
 			/*continue;*/
 		}
 		if (what == OP_seek) {
-			seek = XATOOFF_SFX(val, cwbkMG_suffixes);
+			seek = XATOU_SFX(val, cwbkMG_suffixes);
 			/*continue;*/
 		}
 		if (what == OP_skip) {
-			skip = XATOOFF_SFX(val, cwbkMG_suffixes);
+			skip = XATOU_SFX(val, cwbkMG_suffixes);
 			/*continue;*/
 		}
 		if (what == OP_if) {

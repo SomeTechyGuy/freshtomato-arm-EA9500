@@ -5,6 +5,7 @@
 FTP
 PASV
 RETR
+FAILURE
 </keywords>
 </info>
 # Server-side

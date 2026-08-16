@@ -43,9 +43,6 @@ if no share was used.
 
 Set this option to NULL again to stop using that share object.
 
-Warning: adding a *share* and then setting it to NULL while the transfer
-is ongoing is discouraged and may lead to undefined behavior.
-
 # DEFAULT
 
 NULL

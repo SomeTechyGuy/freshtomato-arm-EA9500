@@ -210,13 +210,12 @@ decode_tag_internal(ev_uint32_t *ptag, struct evbuffer *evbuf, int dodrain)
 	 * the encoding of a number is at most one byte more than its
 	 * storage size.  however, it may also be much smaller.
 	 */
-	size_t pullup_len = len < sizeof(number) + 1 ? len : sizeof(number) + 1;
 	data = evbuffer_pullup(
-		evbuf, pullup_len);
+		evbuf, len < sizeof(number) + 1 ? len : sizeof(number) + 1);
 	if (!data)
 		return (-1);
 
-	while (count++ < pullup_len) {
+	while (count++ < len) {
 		ev_uint8_t lower = *data++;
 		if (shift >= 28) {
 			/* Make sure it fits into 32 bits */
@@ -446,7 +445,7 @@ evtag_unmarshal_header(struct evbuffer *evbuf, ev_uint32_t *ptag)
 
 	if (decode_tag_internal(ptag, evbuf, 1 /* dodrain */) == -1)
 		return (-1);
-	if (evtag_decode_int(&len, evbuf) == -1 || len > INT_MAX)
+	if (evtag_decode_int(&len, evbuf) == -1)
 		return (-1);
 
 	if (evbuffer_get_length(evbuf) < len)

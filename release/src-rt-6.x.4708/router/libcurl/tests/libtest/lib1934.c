@@ -42,17 +42,17 @@ static CURLcode test_lib1934(const char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
 
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-  easy_setopt(curl, CURLOPT_AWS_SIGV4, "xxx:yyy");
-  easy_setopt(curl, CURLOPT_USERPWD, "xxx:yyy");
-  easy_setopt(curl, CURLOPT_HEADER, 0L);
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_AWS_SIGV4, "xxx:yyy");
+  test_setopt(curl, CURLOPT_USERPWD, "xxx:yyy");
+  test_setopt(curl, CURLOPT_HEADER, 0L);
+  test_setopt(curl, CURLOPT_URL, URL);
   if(libtest_arg2) {
     connect_to = curl_slist_append(connect_to, libtest_arg2);
   }
-  easy_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
+  test_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
   list = curl_slist_append(list, "Content-Type: application/json");
-  easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+  test_setopt(curl, CURLOPT_HTTPHEADER, list);
 
   result = curl_easy_perform(curl);
 

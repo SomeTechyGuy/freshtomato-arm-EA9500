@@ -260,6 +260,8 @@ static void alpha_bootblock_checksum(char *boot);
 #if !defined(__alpha__)
 static int xbsd_translate_fstype(int linux_type);
 static void xbsd_link_part(void);
+static struct partition *xbsd_part;
+static int xbsd_part_index;
 #endif
 
 
@@ -280,7 +282,7 @@ static struct bsd_globals *bsd_globals_ptr;
 /* Code */
 
 #define bsd_cround(n) \
-	(DISPLAY_IN_CYL_UNITS ? ((n)/xbsd_dlabel.d_secpercyl) + 1 : (n))
+	(display_in_cyl_units ? ((n)/xbsd_dlabel.d_secpercyl) + 1 : (n))
 
 /*
  * Test whether the whole disk has BSD disk label magic.
@@ -354,9 +356,9 @@ bsd_select(void)
 	for (t = 0; t < 4; t++) {
 		p = get_part_table(t);
 		if (p && is_bsd_partition_type(p->sys_ind)) {
-			G.xbsd_part = p;
-			G.xbsd_part_index = t;
-			ss = get_start_sect(G.xbsd_part);
+			xbsd_part = p;
+			xbsd_part_index = t;
+			ss = get_start_sect(xbsd_part);
 			if (ss == 0) {
 				printf("Partition %s has invalid starting sector 0\n",
 					partname(disk_device, t+1, 0));
@@ -364,7 +366,7 @@ bsd_select(void)
 			}
 				printf("Reading disklabel of %s at sector %u\n",
 					partname(disk_device, t+1, 0), ss + BSD_LABELSECTOR);
-			if (xbsd_readlabel(G.xbsd_part) == 0) {
+			if (xbsd_readlabel(xbsd_part) == 0) {
 				if (xbsd_create_disklabel() == 0)
 					return;
 				break;
@@ -461,8 +463,8 @@ xbsd_new_part(void)
 		return;
 
 #if !defined(__alpha__) && !defined(__powerpc__) && !defined(__hppa__)
-	begin = get_start_sect(G.xbsd_part);
-	end = begin + get_nr_sects(G.xbsd_part) - 1;
+	begin = get_start_sect(xbsd_part);
+	end = begin + get_nr_sects(xbsd_part) - 1;
 #else
 	begin = 0;
 	end = xbsd_dlabel.d_secperunit - 1;
@@ -472,7 +474,7 @@ xbsd_new_part(void)
 	begin = read_int(bsd_cround(begin), bsd_cround(begin), bsd_cround(end),
 		0, mesg);
 
-	if (DISPLAY_IN_CYL_UNITS)
+	if (display_in_cyl_units)
 		begin = (begin - 1) * xbsd_dlabel.d_secpercyl;
 
 	snprintf(mesg, sizeof(mesg), "Last %s or +size or +sizeM or +sizeK",
@@ -480,7 +482,7 @@ xbsd_new_part(void)
 	end = read_int(bsd_cround(begin), bsd_cround(end), bsd_cround(end),
 		bsd_cround(begin), mesg);
 
-	if (DISPLAY_IN_CYL_UNITS)
+	if (display_in_cyl_units)
 		end = end * xbsd_dlabel.d_secpercyl - 1;
 
 	xbsd_dlabel.d_partitions[i].p_size   = end - begin + 1;
@@ -501,7 +503,7 @@ xbsd_print_disklabel(int show_all)
 #if defined(__alpha__)
 		printf("# %s:\n", disk_device);
 #else
-		printf("# %s:\n", partname(disk_device, G.xbsd_part_index + 1, 0));
+		printf("# %s:\n", partname(disk_device, xbsd_part_index+1, 0));
 #endif
 		if ((unsigned) lp->d_type < ARRAY_SIZE(xbsd_dktypenames)-1)
 			printf("type: %s\n", xbsd_dktypenames[lp->d_type]);
@@ -541,7 +543,7 @@ xbsd_print_disklabel(int show_all)
 	pp = lp->d_partitions;
 	for (i = 0; i < lp->d_npartitions; i++, pp++) {
 		if (pp->p_size) {
-			if (DISPLAY_IN_CYL_UNITS && lp->d_secpercyl) {
+			if (display_in_cyl_units && lp->d_secpercyl) {
 				printf("  %c: %8lu%c %8lu%c %8lu%c  ",
 					'a' + i,
 					(unsigned long) pp->p_offset / lp->d_secpercyl + 1,
@@ -591,8 +593,8 @@ xbsd_write_disklabel(void)
 	xbsd_writelabel(NULL);
 #else
 	printf("Writing disklabel to %s\n",
-		partname(disk_device, G.xbsd_part_index + 1, 0));
-	xbsd_writelabel(G.xbsd_part);
+		partname(disk_device, xbsd_part_index + 1, 0));
+	xbsd_writelabel(xbsd_part);
 #endif
 	reread_partition_table(0);      /* no exit yet */
 }
@@ -606,7 +608,7 @@ xbsd_create_disklabel(void)
 	printf("%s contains no disklabel\n", disk_device);
 #else
 	printf("%s contains no disklabel\n",
-		partname(disk_device, G.xbsd_part_index + 1, 0));
+		partname(disk_device, xbsd_part_index + 1, 0));
 #endif
 
 	while (1) {
@@ -617,7 +619,7 @@ xbsd_create_disklabel(void)
 	defined(__s390__) || defined(__s390x__)
 				NULL
 #else
-				G.xbsd_part
+				xbsd_part
 #endif
 			) == 1) {
 				xbsd_print_disklabel(1);
@@ -759,7 +761,7 @@ xbsd_write_bootstrap(void)
 	sector = 0;
 	alpha_bootblock_checksum(disklabelbuffer);
 #else
-	sector = get_start_sect(G.xbsd_part);
+	sector = get_start_sect(xbsd_part);
 #endif
 
 	seek_sector(sector);
@@ -769,7 +771,7 @@ xbsd_write_bootstrap(void)
 	printf("Bootstrap installed on %s\n", disk_device);
 #else
 	printf("Bootstrap installed on %s\n",
-		partname(disk_device, G.xbsd_part_index + 1, 0));
+		partname(disk_device, xbsd_part_index+1, 0));
 #endif
 
 	sync_disks();

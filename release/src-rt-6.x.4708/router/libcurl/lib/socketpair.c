@@ -232,9 +232,16 @@ static int wakeup_inet(curl_socket_t socks[2], bool nonblocking)
         /* Do not block forever */
         if(curlx_timediff_ms(curlx_now(), start) > (60 * 1000))
           goto error;
-        if(SOCK_EAGAIN(sockerr)
-#ifndef USE_WINSOCK
-           || (sockerr == SOCKEINTR) || (sockerr == SOCKEINPROGRESS)
+        if(
+#ifdef USE_WINSOCK
+           /* This is how Windows does it */
+           (SOCKEWOULDBLOCK == sockerr)
+#else
+           /* errno may be EWOULDBLOCK or on some systems EAGAIN when it
+              returned due to its inability to send off data without
+              blocking. We therefore treat both error codes the same here */
+           (SOCKEWOULDBLOCK == sockerr) || (EAGAIN == sockerr) ||
+           (SOCKEINTR == sockerr) || (SOCKEINPROGRESS == sockerr)
 #endif
           ) {
           continue;
@@ -302,7 +309,7 @@ int Curl_wakeup_init(curl_socket_t socks[2], bool nonblocking)
 
 int Curl_wakeup_signal(curl_socket_t socks[2])
 {
-  int sockerr = 0;
+  int err = 0;
 #ifdef USE_EVENTFD
   const uint64_t buf[1] = { 1 };
 #else
@@ -310,19 +317,22 @@ int Curl_wakeup_signal(curl_socket_t socks[2])
 #endif
 
   while(1) {
-    sockerr = 0;
+    err = 0;
     if(wakeup_write(socks[1], buf, sizeof(buf)) < 0) {
-      sockerr = SOCKERRNO;
-#ifndef USE_WINSOCK
-      if(sockerr == SOCKEINTR)
+      err = SOCKERRNO;
+#ifdef USE_WINSOCK
+      if(err == SOCKEWOULDBLOCK)
+        err = 0; /* wakeup is already ongoing */
+#else
+      if(SOCKEINTR == err)
         continue;
+      if((err == SOCKEWOULDBLOCK) || (err == EAGAIN))
+        err = 0; /* wakeup is already ongoing */
 #endif
-      if(SOCK_EAGAIN(sockerr))
-        sockerr = 0; /* wakeup is already ongoing */
     }
     break;
   }
-  return sockerr;
+  return err;
 }
 
 CURLcode Curl_wakeup_consume(curl_socket_t socks[2], bool all)
@@ -336,13 +346,15 @@ CURLcode Curl_wakeup_consume(curl_socket_t socks[2], bool all)
     if(!rc)
       break;
     else if(rc < 0) {
-      int sockerr = SOCKERRNO;
-#ifndef USE_WINSOCK
-      if(sockerr == SOCKEINTR)
-        continue;
-#endif
-      if(SOCK_EAGAIN(sockerr))
+#ifdef USE_WINSOCK
+      if(SOCKERRNO == SOCKEWOULDBLOCK)
         break;
+#else
+      if(SOCKEINTR == SOCKERRNO)
+        continue;
+      if((SOCKERRNO == SOCKEWOULDBLOCK) || (SOCKERRNO == EAGAIN))
+        break;
+#endif
       result = CURLE_READ_ERROR;
       break;
     }

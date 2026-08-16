@@ -220,7 +220,7 @@ PHPAPI void php_register_variable_ex(const char *var_name, zval *val, zval *trac
 
 			ip++;
 			index_s = ip;
-			if (isspace((unsigned char)*ip)) {
+			if (isspace(*ip)) {
 				ip++;
 			}
 			if (*ip==']') {
@@ -543,7 +543,7 @@ SAPI_API SAPI_TREAT_DATA_FUNC(php_default_treat_data)
 
 		if (arg == PARSE_COOKIE) {
 			/* Remove leading spaces from cookie names, needed for multi-cookie header where ; can be followed by a space */
-			while (isspace((unsigned char)*var)) {
+			while (isspace(*var)) {
 				var++;
 			}
 			if (var == val || *var == '\0') {

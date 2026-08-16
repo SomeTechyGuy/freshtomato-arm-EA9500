@@ -104,9 +104,8 @@ class LocalClient:
             log.warning(f'Timeout after {self._timeout}s: {args}')
             exitcode = -1
             exception = 'TimeoutExpired'
-        with open(self._stdoutfile) as fout, open(self._stderrfile) as ferr:
-            coutput = fout.readlines()
-            cerrput = ferr.readlines()
+        coutput = open(self._stdoutfile).readlines()
+        cerrput = open(self._stderrfile).readlines()
         return ExecResult(args=myargs, exit_code=exitcode, exception=exception,
                           stdout=coutput, stderr=cerrput,
                           duration=datetime.now() - start)
@@ -114,10 +113,8 @@ class LocalClient:
     def dump_logs(self):
         lines = []
         lines.append('>>--stdout ----------------------------------------------\n')
-        with open(self._stdoutfile) as fd:
-            lines.extend(fd.readlines())
+        lines.extend(open(self._stdoutfile).readlines())
         lines.append('>>--stderr ----------------------------------------------\n')
-        with open(self._stderrfile) as fd:
-            lines.extend(fd.readlines())
+        lines.extend(open(self._stderrfile).readlines())
         lines.append('<<-------------------------------------------------------\n')
         return ''.join(lines)

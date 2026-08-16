@@ -94,24 +94,24 @@ static CURLcode test_lib652(const char *URL)
   }
 
   /* First set the URL that is about to receive our mime mail. */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Set sender. */
-  easy_setopt(curl, CURLOPT_MAIL_FROM, "somebody@example.com");
+  test_setopt(curl, CURLOPT_MAIL_FROM, "somebody@example.com");
 
   /* Set recipients. */
-  easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
+  test_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
   /* send a multi-part mail */
-  easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+  test_setopt(curl, CURLOPT_MIMEPOST, mime);
 
   /* Shorten upload buffer. */
-  easy_setopt(curl, CURLOPT_UPLOAD_BUFFERSIZE, 16411L);
+  test_setopt(curl, CURLOPT_UPLOAD_BUFFERSIZE, 16411L);
 
   /* get verbose debug output please */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-  /* Perform the request, result gets the return code */
+  /* Perform the request, result will get the return code */
   result = curl_easy_perform(curl);
 
 test_cleanup:

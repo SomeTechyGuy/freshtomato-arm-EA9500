@@ -366,9 +366,6 @@ main(int argc, char *argv[])
     strlcpy(path_net_preup, PPP_PATH_NET_PREUP, MAXPATHLEN);
     strlcpy(path_net_down, PPP_PATH_NET_DOWN, MAXPATHLEN);
 
-    strlcpy(path_auth_up, PPP_PATH_AUTHUP, MAXPATHLEN);
-    strlcpy(path_auth_down, PPP_PATH_AUTHDOWN, MAXPATHLEN);
-
     strlcpy(path_ipup, PPP_PATH_IPUP, MAXPATHLEN);
     strlcpy(path_ipdown, PPP_PATH_IPDOWN, MAXPATHLEN);
     strlcpy(path_ippreup, PPP_PATH_IPPREUP, MAXPATHLEN);
@@ -499,8 +496,6 @@ main(int argc, char *argv[])
 	    fatal("Critical shortage of file descriptors: dup failed: %m");
 	fd_devnull = i;
     }
-
-    event_handler_init();
 
     /*
      * Initialize system-dependent stuff.
@@ -849,10 +844,6 @@ set_ifunit(int iskey)
 	slprintf(ifname, sizeof(ifname), "%s%d", PPP_DRV_NAME, ifunit);
     info("Using interface %s", ifname);
     ppp_script_setenv("IFNAME", ifname, iskey);
-#ifdef __linux__
-    if (req_vrf[0] != '\0')
-        ppp_script_setenv("VRF", req_vrf, iskey);
-#endif
     slprintf(ifkey, sizeof(ifkey), "%d", ifunit);
     ppp_script_setenv("UNIT", ifkey, iskey);
     if (iskey) {
@@ -1924,14 +1915,21 @@ pid_t
 run_program(char *prog, char * const *args, int must_exist, void (*done)(void *), void *arg, int wait)
 {
     int pid, status, ret;
-    char *rpath;
+    struct stat sbuf;
 
     /*
-     * First check if the file exists and is executable by root,
-     * and couldn't have been modified by a non-root process.
+     * First check if the file exists and is executable.
+     * We don't use access() because that would use the
+     * real user-id, which might not be root, and the script
+     * might be accessible only to root.
      */
-    if (!ppp_check_access(prog, &rpath, must_exist, 1))
+    errno = EINVAL;
+    if (stat(prog, &sbuf) < 0 || !S_ISREG(sbuf.st_mode)
+	|| (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) == 0) {
+	if (must_exist || errno != ENOENT)
+	    warn("Can't execute %s: %m", prog);
 	return 0;
+    }
 
     pid = ppp_safe_fork(fd_devnull, fd_devnull, fd_devnull);
     if (pid == -1) {
@@ -1950,7 +1948,6 @@ run_program(char *prog, char * const *args, int must_exist, void (*done)(void *)
 	    }
 	    forget_child(pid, status);
 	}
-	free(rpath);
 	return pid;
     }
 
@@ -1978,12 +1975,12 @@ run_program(char *prog, char * const *args, int must_exist, void (*done)(void *)
 
     /* run the program */
     update_script_environment();
-    execve(rpath, args, script_env);
+    execve(prog, args, script_env);
     if (must_exist || errno != ENOENT) {
 	/* have to reopen the log, there's nowhere else
 	   for the message to go. */
 	reopen_log();
-	syslog(LOG_ERR, "Can't execute %s: %m", rpath);
+	syslog(LOG_ERR, "Can't execute %s: %m", prog);
 	closelog();
     }
     _exit(99);

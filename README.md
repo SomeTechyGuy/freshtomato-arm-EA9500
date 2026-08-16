@@ -1,6 +1,6 @@
 # **FreshTomato-ARM-EA9500** #
 
-# This port is EXTREMELY buggy (takes MANY attempts to properly boot with network interface, NVRAM changes crash the entire router, the firmware is fragile and small changes can break everything, etc). If this firmware causes damage in some way, you are responsible for it.
+# This image has NOT been tested at all, if this damages your router or mental health (due to trauma because you tried to compile this), I'm not responsible.
 
 ## The patches in this firmware are made with AI, I don't have any programming knowledge to do this myself.
   

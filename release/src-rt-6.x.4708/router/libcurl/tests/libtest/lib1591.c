@@ -23,7 +23,7 @@
  ***************************************************************************/
 
 /*
- * This unit test PUT http data over proxy. Proxy header is different
+ * This unit test PUT http data over proxy. Proxy header will be different
  * from server http header
  */
 
@@ -34,16 +34,15 @@ static size_t consumed = 0;
 static size_t t1591_read_cb(char *ptr, size_t size, size_t nmemb, void *stream)
 {
   static const char testdata[] = "Hello Cloud!\r\n";
-  static size_t const datalen = sizeof(testdata) - 1;
 
   size_t amount = nmemb * size; /* Total bytes curl wants */
 
-  if(consumed == datalen) {
+  if(consumed == strlen(testdata)) {
     return 0;
   }
 
-  if(amount > datalen - consumed) {
-    amount = datalen - consumed;
+  if(amount > strlen(testdata) - consumed) {
+    amount = strlen(testdata);
   }
 
   consumed += amount;
@@ -98,12 +97,12 @@ static CURLcode test_lib1591(const char *URL)
     goto test_cleanup;
   }
 
-  easy_setopt(curl, CURLOPT_URL, URL);
-  easy_setopt(curl, CURLOPT_HTTPHEADER, hhl);
-  easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-  easy_setopt(curl, CURLOPT_READFUNCTION, t1591_read_cb);
-  easy_setopt(curl, CURLOPT_TRAILERFUNCTION, t1591_trailers_callback);
-  easy_setopt(curl, CURLOPT_TRAILERDATA, NULL);
+  test_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_HTTPHEADER, hhl);
+  test_setopt(curl, CURLOPT_UPLOAD, 1L);
+  test_setopt(curl, CURLOPT_READFUNCTION, t1591_read_cb);
+  test_setopt(curl, CURLOPT_TRAILERFUNCTION, t1591_trailers_callback);
+  test_setopt(curl, CURLOPT_TRAILERDATA, NULL);
 
   result = curl_easy_perform(curl);
 

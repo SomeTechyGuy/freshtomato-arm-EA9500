@@ -50,27 +50,27 @@ static CURLcode test_lib513(const char *URL)
   }
 
   /* First set the URL that is about to receive our POST. */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Now specify we want to POST data */
-  easy_setopt(curl, CURLOPT_POST, 1L);
+  test_setopt(curl, CURLOPT_POST, 1L);
 
   /* Set the expected POST size */
-  easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 1L);
+  test_setopt(curl, CURLOPT_POSTFIELDSIZE, 1L);
 
   /* we want to use our own read function */
-  easy_setopt(curl, CURLOPT_READFUNCTION, t513_read_cb);
+  test_setopt(curl, CURLOPT_READFUNCTION, t513_read_cb);
 
   /* pointer to pass to our read function */
-  easy_setopt(curl, CURLOPT_READDATA, NULL);
+  test_setopt(curl, CURLOPT_READDATA, NULL);
 
   /* get verbose debug output please */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* include headers in the output */
-  easy_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
 
-  /* Perform the request, result gets the return code */
+  /* Perform the request, result will get the return code */
   result = curl_easy_perform(curl);
 
 test_cleanup:

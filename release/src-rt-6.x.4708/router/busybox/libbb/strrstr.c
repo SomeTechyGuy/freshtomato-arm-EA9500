@@ -19,10 +19,10 @@ char* FAST_FUNC strrstr(const char *haystack, const char *needle)
 	if (!needle[0])
 		return (char*)haystack + strlen(haystack);
 	while (1) {
-		const char *p = strstr(haystack, needle);
+		char *p = strstr(haystack, needle);
 		if (!p)
 			return r;
-		r = (char *)p;
+		r = p;
 		haystack = p + 1;
 	}
 }

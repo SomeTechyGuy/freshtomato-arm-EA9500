@@ -69,7 +69,7 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
   struct t554_WriteThis pooh2;
 
   pooh.readptr = testdata;
-  pooh.sizeleft = sizeof(testdata) - 1;
+  pooh.sizeleft = strlen(testdata);
 
   /* Fill in the file upload field */
   if(oldstyle) {
@@ -93,13 +93,13 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
   }
 
   if(formrc)
-    curl_mprintf("curl_formadd(1) = %d\n", (int)formrc);
+    curl_mprintf("curl_formadd(1) = %d\n", formrc);
 
   /* Now add the same data with another name and make it not look like
      a file upload but still using the callback */
 
   pooh2.readptr = testdata;
-  pooh2.sizeleft = sizeof(testdata) - 1;
+  pooh2.sizeleft = strlen(testdata);
 
   /* Fill in the file upload field */
   formrc = curl_formadd(&formpost,
@@ -110,7 +110,7 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
                         CURLFORM_END);
 
   if(formrc)
-    curl_mprintf("curl_formadd(2) = %d\n", (int)formrc);
+    curl_mprintf("curl_formadd(2) = %d\n", formrc);
 
   /* Fill in the filename field */
   formrc = curl_formadd(&formpost,
@@ -119,7 +119,7 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
                         CURLFORM_COPYCONTENTS, "postit2.c",
                         CURLFORM_END);
   if(formrc)
-    curl_mprintf("curl_formadd(3) = %d\n", (int)formrc);
+    curl_mprintf("curl_formadd(3) = %d\n", formrc);
 
   /* Fill in a submit field too */
   formrc = curl_formadd(&formpost,
@@ -130,7 +130,7 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
                         CURLFORM_END);
 
   if(formrc)
-    curl_mprintf("curl_formadd(4) = %d\n", (int)formrc);
+    curl_mprintf("curl_formadd(4) = %d\n", formrc);
 
   formrc = curl_formadd(&formpost, &lastptr,
                         CURLFORM_COPYNAME, "somename",
@@ -140,7 +140,7 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
                         CURLFORM_END);
 
   if(formrc)
-    curl_mprintf("curl_formadd(5) = %d\n", (int)formrc);
+    curl_mprintf("curl_formadd(5) = %d\n", formrc);
 
   curl = curl_easy_init();
   if(!curl) {
@@ -151,32 +151,32 @@ static CURLcode t554_test_once(const char *URL, bool oldstyle)
   }
 
   /* First set the URL that is about to receive our POST. */
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* Now specify we want to POST data */
-  easy_setopt(curl, CURLOPT_POST, 1L);
+  test_setopt(curl, CURLOPT_POST, 1L);
 
   /* Set the expected POST size */
-  easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)pooh.sizeleft);
+  test_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)pooh.sizeleft);
 
   /* we want to use our own read function */
   if(testnum == 587) {
-    easy_setopt(curl, CURLOPT_READFUNCTION, t587_read_cb);
+    test_setopt(curl, CURLOPT_READFUNCTION, t587_read_cb);
   }
   else {
-    easy_setopt(curl, CURLOPT_READFUNCTION, t554_read_cb);
+    test_setopt(curl, CURLOPT_READFUNCTION, t554_read_cb);
   }
 
   /* send a multi-part formpost */
-  easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+  test_setopt(curl, CURLOPT_HTTPPOST, formpost);
 
   /* get verbose debug output please */
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* include headers in the output */
-  easy_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
 
-  /* Perform the request, result gets the return code */
+  /* Perform the request, result will get the return code */
   result = curl_easy_perform(curl);
 
 test_cleanup:

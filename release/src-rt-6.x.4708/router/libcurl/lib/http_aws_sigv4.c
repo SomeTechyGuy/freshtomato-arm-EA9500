@@ -271,12 +271,13 @@ static bool should_urlencode(struct Curl_str *service_name)
    * should_urlencode == true is equivalent to should_urlencode_uri_path
    * from the AWS SDK. Urls are already normalized by the curl URL parser
    */
+
   if(curlx_str_cmp(service_name, "s3") ||
      curlx_str_cmp(service_name, "s3-express") ||
      curlx_str_cmp(service_name, "s3-outposts")) {
-    return FALSE;
+    return false;
   }
-  return TRUE;
+  return true;
 }
 
 /* maximum length for the aws sivg4 parts */
@@ -383,7 +384,7 @@ static CURLcode make_headers(struct Curl_easy *data,
   char date_full_hdr[DATE_FULL_HDR_LEN];
   struct curl_slist *head = NULL;
   struct curl_slist *tmp_head = NULL;
-  CURLcode result = CURLE_OUT_OF_MEMORY;
+  CURLcode ret = CURLE_OUT_OF_MEMORY;
   struct curl_slist *l;
   bool again = TRUE;
 
@@ -515,8 +516,8 @@ static CURLcode make_headers(struct Curl_easy *data,
     }
   } while(again);
 
-  result = merge_duplicate_headers(head);
-  if(result)
+  ret = merge_duplicate_headers(head);
+  if(ret)
     goto fail;
 
   for(l = head; l; l = l->next) {
@@ -539,11 +540,11 @@ static CURLcode make_headers(struct Curl_easy *data,
       goto fail;
   }
 
-  result = CURLE_OK;
+  ret = CURLE_OK;
 fail:
   curl_slist_free_all(head);
 
-  return result;
+  return ret;
 }
 
 #define CONTENT_SHA256_KEY_LEN (MAX_SIGV4_LEN + sizeof("X--Content-Sha256"))
@@ -617,12 +618,12 @@ static CURLcode calc_s3_payload_hash(struct Curl_easy *data,
   bool empty_payload = (empty_method || data->set.filesize == 0);
   /* The POST payload is in memory */
   bool post_payload = (httpreq == HTTPREQ_POST && data->set.postfields);
-  CURLcode result = CURLE_OUT_OF_MEMORY;
+  CURLcode ret = CURLE_OUT_OF_MEMORY;
 
   if(empty_payload || post_payload) {
     /* Calculate a real hash when we know the request payload */
-    result = calc_payload_hash(data, sha_hash, sha_hex);
-    if(result)
+    ret = calc_payload_hash(data, sha_hash, sha_hex);
+    if(ret)
       goto fail;
   }
   else {
@@ -637,9 +638,9 @@ static CURLcode calc_s3_payload_hash(struct Curl_easy *data,
   curl_msnprintf(header, CONTENT_SHA256_HDR_LEN,
                  "x-%.*s-content-sha256: %s", (int)plen, provider1, sha_hex);
 
-  result = CURLE_OK;
+  ret = CURLE_OK;
 fail:
-  return result;
+  return ret;
 }
 
 static int compare_func(const void *a, const void *b)
@@ -817,14 +818,66 @@ fail:
   return result;
 }
 
-static CURLcode parse_sigv4_params(struct Curl_easy *data,
-                                   const char *hostname,
-                                   struct Curl_str *provider0,
-                                   struct Curl_str *provider1,
-                                   struct Curl_str *region,
-                                   struct Curl_str *service)
+CURLcode Curl_output_aws_sigv4(struct Curl_easy *data)
 {
-  const char *line = data->set.str[STRING_AWS_SIGV4];
+  CURLcode result = CURLE_OUT_OF_MEMORY;
+  struct connectdata *conn = data->conn;
+  const char *line;
+  struct Curl_str provider0;
+  struct Curl_str provider1;
+  struct Curl_str region = { NULL, 0 };
+  struct Curl_str service = { NULL, 0 };
+  const char *hostname = conn->host.name;
+  time_t clock;
+  struct tm tm;
+  char timestamp[TIMESTAMP_SIZE];
+  char date[9];
+  struct dynbuf canonical_headers;
+  struct dynbuf signed_headers;
+  struct dynbuf canonical_query;
+  struct dynbuf canonical_path;
+  char *date_header = NULL;
+  Curl_HttpReq httpreq;
+  const char *method = NULL;
+  const char *payload_hash = NULL;
+  size_t payload_hash_len = 0;
+  unsigned char sha_hash[CURL_SHA256_DIGEST_LENGTH];
+  char sha_hex[SHA256_HEX_LENGTH];
+  char content_sha256_hdr[CONTENT_SHA256_HDR_LEN + 2] = ""; /* add \r\n */
+  char *canonical_request = NULL;
+  char *request_type = NULL;
+  char *credential_scope = NULL;
+  char *str_to_sign = NULL;
+  const char *user = data->state.aptr.user ? data->state.aptr.user : "";
+  char *secret = NULL;
+  unsigned char sign0[CURL_SHA256_DIGEST_LENGTH] = { 0 };
+  unsigned char sign1[CURL_SHA256_DIGEST_LENGTH] = { 0 };
+  char *auth_headers = NULL;
+
+  if(data->set.path_as_is) {
+    failf(data, "Cannot use sigv4 authentication with path-as-is flag");
+    return CURLE_BAD_FUNCTION_ARGUMENT;
+  }
+
+  if(Curl_checkheaders(data, STRCONST("Authorization"))) {
+    /* Authorization already present, Bailing out */
+    return CURLE_OK;
+  }
+
+  /* we init those buffers here, so goto fail will free initialized dynbuf */
+  curlx_dyn_init(&canonical_headers, CURL_MAX_HTTP_HEADER);
+  curlx_dyn_init(&canonical_query, CURL_MAX_HTTP_HEADER);
+  curlx_dyn_init(&signed_headers, CURL_MAX_HTTP_HEADER);
+  curlx_dyn_init(&canonical_path, CURL_MAX_HTTP_HEADER);
+
+  /*
+   * Parameters parsing
+   * Google and Outscale use the same OSC or GOOG,
+   * but Amazon uses AWS and AMZ for header arguments.
+   * AWS is the default because most of non-amazon providers
+   * are still using aws:amz as a prefix.
+   */
+  line = data->set.str[STRING_AWS_SIGV4];
   if(!line || !*line)
     line = "aws:amz";
 
@@ -832,89 +885,71 @@ static CURLcode parse_sigv4_params(struct Curl_easy *data,
 
      No string can be longer than N bytes of non-whitespace
   */
-  if(curlx_str_until(&line, provider0, MAX_SIGV4_LEN, ':')) {
+  if(curlx_str_until(&line, &provider0, MAX_SIGV4_LEN, ':')) {
     failf(data, "first aws-sigv4 provider cannot be empty");
-    return CURLE_BAD_FUNCTION_ARGUMENT;
+    result = CURLE_BAD_FUNCTION_ARGUMENT;
+    goto fail;
   }
   if(curlx_str_single(&line, ':') ||
-     curlx_str_until(&line, provider1, MAX_SIGV4_LEN, ':')) {
-    *provider1 = *provider0;
+     curlx_str_until(&line, &provider1, MAX_SIGV4_LEN, ':')) {
+    provider1 = provider0;
   }
   else if(curlx_str_single(&line, ':') ||
-          curlx_str_until(&line, region, MAX_SIGV4_LEN, ':') ||
+          curlx_str_until(&line, &region, MAX_SIGV4_LEN, ':') ||
           curlx_str_single(&line, ':') ||
-          curlx_str_until(&line, service, MAX_SIGV4_LEN, ':')) {
+          curlx_str_until(&line, &service, MAX_SIGV4_LEN, ':')) {
     /* nothing to do */
   }
 
-  if(!curlx_strlen(service)) {
+  if(!curlx_strlen(&service)) {
     const char *p = hostname;
-    if(curlx_str_until(&p, service, MAX_SIGV4_LEN, '.') ||
+    if(curlx_str_until(&p, &service, MAX_SIGV4_LEN, '.') ||
        curlx_str_single(&p, '.')) {
       failf(data, "aws-sigv4: service missing in parameters and hostname");
-      return CURLE_URL_MALFORMAT;
+      result = CURLE_URL_MALFORMAT;
+      goto fail;
     }
 
     infof(data, "aws_sigv4: picked service %.*s from host",
-          (int)curlx_strlen(service), curlx_str(service));
+          (int)curlx_strlen(&service), curlx_str(&service));
 
-    if(!curlx_strlen(region)) {
-      if(curlx_str_until(&p, region, MAX_SIGV4_LEN, '.') ||
+    if(!curlx_strlen(&region)) {
+      if(curlx_str_until(&p, &region, MAX_SIGV4_LEN, '.') ||
          curlx_str_single(&p, '.')) {
         failf(data, "aws-sigv4: region missing in parameters and hostname");
-        return CURLE_URL_MALFORMAT;
+        result = CURLE_URL_MALFORMAT;
+        goto fail;
       }
       infof(data, "aws_sigv4: picked region %.*s from host",
-            (int)curlx_strlen(region), curlx_str(region));
+            (int)curlx_strlen(&region), curlx_str(&region));
     }
   }
 
-  return CURLE_OK;
-}
+  Curl_http_method(data, &method, &httpreq);
 
-static CURLcode get_payload_hash(struct Curl_easy *data,
-                                 Curl_HttpReq httpreq,
-                                 struct Curl_str *provider0,
-                                 struct Curl_str *provider1,
-                                 struct Curl_str *service,
-                                 unsigned char *sha_hash,
-                                 char *sha_hex,
-                                 char *content_sha256_hdr,
-                                 const char **payload_hash_out,
-                                 size_t *payload_hash_len_out)
-{
-  *payload_hash_out =
-    parse_content_sha_hdr(data, curlx_str(provider1),
-                          curlx_strlen(provider1), payload_hash_len_out);
+  payload_hash =
+    parse_content_sha_hdr(data, curlx_str(&provider1),
+                          curlx_strlen(&provider1), &payload_hash_len);
 
-  if(!*payload_hash_out) {
-    CURLcode result;
+  if(!payload_hash) {
     /* AWS S3 requires a x-amz-content-sha256 header, and supports special
      * values like UNSIGNED-PAYLOAD */
-    bool sign_as_s3 = curlx_str_casecompare(provider0, "aws") &&
-                      curlx_str_casecompare(service, "s3");
+    bool sign_as_s3 = curlx_str_casecompare(&provider0, "aws") &&
+                      curlx_str_casecompare(&service, "s3");
 
     if(sign_as_s3)
-      result = calc_s3_payload_hash(data, httpreq, curlx_str(provider1),
-                                    curlx_strlen(provider1), sha_hash,
+      result = calc_s3_payload_hash(data, httpreq, curlx_str(&provider1),
+                                    curlx_strlen(&provider1), sha_hash,
                                     sha_hex, content_sha256_hdr);
     else
       result = calc_payload_hash(data, sha_hash, sha_hex);
     if(result)
-      return result;
+      goto fail;
 
-    *payload_hash_out = sha_hex;
+    payload_hash = sha_hex;
     /* may be shorter than SHA256_HEX_LENGTH, like S3_UNSIGNED_PAYLOAD */
-    *payload_hash_len_out = strlen(sha_hex);
+    payload_hash_len = strlen(sha_hex);
   }
-  return CURLE_OK;
-}
-
-static CURLcode get_timestamp(char *timestamp, size_t stampsize)
-{
-  time_t clock;
-  struct tm tm;
-  CURLcode result;
 
 #ifdef DEBUGBUILD
   {
@@ -928,42 +963,30 @@ static CURLcode get_timestamp(char *timestamp, size_t stampsize)
   clock = time(NULL);
 #endif
   result = curlx_gmtime(clock, &tm);
-  if(result)
-    return result;
-
-  if(!strftime(timestamp, stampsize, "%Y%m%dT%H%M%SZ", &tm))
-    return CURLE_OUT_OF_MEMORY;
-
-  return CURLE_OK;
-}
-
-static CURLcode make_canonical_request(struct Curl_easy *data,
-                                       const char *hostname,
-                                       char *timestamp,
-                                       struct Curl_str *provider1,
-                                       struct Curl_str *service,
-                                       const char *method,
-                                       const char *payload_hash,
-                                       size_t payload_hash_len,
-                                       char **date_header_out,
-                                       char *content_sha256_hdr,
-                                       struct dynbuf *canonical_headers,
-                                       struct dynbuf *signed_headers,
-                                       char **canonical_request_out)
-{
-  struct dynbuf canonical_query;
-  struct dynbuf canonical_path;
-  CURLcode result;
-
-  curlx_dyn_init(&canonical_query, CURL_MAX_HTTP_HEADER);
-  curlx_dyn_init(&canonical_path, CURL_MAX_HTTP_HEADER);
+  if(result) {
+    goto fail;
+  }
+  if(!strftime(timestamp, sizeof(timestamp), "%Y%m%dT%H%M%SZ", &tm)) {
+    result = CURLE_OUT_OF_MEMORY;
+    goto fail;
+  }
 
   result = make_headers(data, hostname, timestamp,
-                        curlx_str(provider1), curlx_strlen(provider1),
-                        date_header_out, content_sha256_hdr,
-                        canonical_headers, signed_headers);
+                        curlx_str(&provider1), curlx_strlen(&provider1),
+                        &date_header, content_sha256_hdr,
+                        &canonical_headers, &signed_headers);
   if(result)
     goto fail;
+
+  if(*content_sha256_hdr) {
+    /* make_headers() needed this without the \r\n for canonicalization */
+    size_t hdrlen = strlen(content_sha256_hdr);
+    DEBUGASSERT(hdrlen + 3 < sizeof(content_sha256_hdr));
+    memcpy(content_sha256_hdr + hdrlen, "\r\n", 3);
+  }
+
+  memcpy(date, timestamp, sizeof(date));
+  date[sizeof(date) - 1] = 0;
 
   result = canon_query(data->state.up.query, &canonical_query);
   if(result)
@@ -971,11 +994,12 @@ static CURLcode make_canonical_request(struct Curl_easy *data,
 
   result = canon_path(data->state.up.path, strlen(data->state.up.path),
                       &canonical_path,
-                      should_urlencode(service));
+                      should_urlencode(&service));
   if(result)
     goto fail;
+  result = CURLE_OUT_OF_MEMORY;
 
-  *canonical_request_out =
+  canonical_request =
     curl_maprintf("%s\n" /* HTTPRequestMethod */
                   "%s\n" /* CanonicalURI */
                   "%s\n" /* CanonicalQueryString */
@@ -986,65 +1010,37 @@ static CURLcode make_canonical_request(struct Curl_easy *data,
                   curlx_dyn_ptr(&canonical_path),
                   curlx_dyn_ptr(&canonical_query) ?
                   curlx_dyn_ptr(&canonical_query) : "",
-                  curlx_dyn_ptr(canonical_headers),
-                  curlx_dyn_ptr(signed_headers),
+                  curlx_dyn_ptr(&canonical_headers),
+                  curlx_dyn_ptr(&signed_headers),
                   (int)payload_hash_len, payload_hash);
-  if(!*canonical_request_out) {
-    result = CURLE_OUT_OF_MEMORY;
+  if(!canonical_request)
     goto fail;
-  }
 
-  result = CURLE_OK;
-fail:
-  curlx_dyn_free(&canonical_query);
-  curlx_dyn_free(&canonical_path);
-  return result;
-}
-
-static CURLcode make_string_to_sign(struct Curl_easy *data,
-                                    struct Curl_str *provider0,
-                                    struct Curl_str *region,
-                                    struct Curl_str *service,
-                                    const char *date,
-                                    const char *timestamp,
-                                    const char *canonical_request,
-                                    char **request_type_out,
-                                    char **credential_scope_out,
-                                    char **str_to_sign_out)
-{
-  char *request_type;
-  char *credential_scope;
-  char *str_to_sign;
-  unsigned char sha_hash[CURL_SHA256_DIGEST_LENGTH];
-  char sha_hex[SHA256_HEX_LENGTH];
+  infof(data, "aws_sigv4: Canonical request (enclosed in []) - [%s]",
+        canonical_request);
 
   request_type = curl_maprintf("%.*s4_request",
-                               (int)curlx_strlen(provider0),
-                               curlx_str(provider0));
+                               (int)curlx_strlen(&provider0),
+                               curlx_str(&provider0));
   if(!request_type)
-    return CURLE_OUT_OF_MEMORY;
+    goto fail;
 
   /* provider0 is lowercased *after* curl_maprintf() so that the buffer
      can be written to */
-  Curl_strntolower(request_type, request_type, curlx_strlen(provider0));
+  Curl_strntolower(request_type, request_type, curlx_strlen(&provider0));
 
   credential_scope = curl_maprintf("%s/%.*s/%.*s/%s", date,
-                                   (int)curlx_strlen(region),
-                                   curlx_str(region),
-                                   (int)curlx_strlen(service),
-                                   curlx_str(service),
+                                   (int)curlx_strlen(&region),
+                                   curlx_str(&region),
+                                   (int)curlx_strlen(&service),
+                                   curlx_str(&service),
                                    request_type);
-  if(!credential_scope) {
-    curlx_free(request_type);
-    return CURLE_OUT_OF_MEMORY;
-  }
+  if(!credential_scope)
+    goto fail;
 
-  if(Curl_sha256it(sha_hash, (const unsigned char *)canonical_request,
-                   strlen(canonical_request))) {
-    curlx_free(request_type);
-    curlx_free(credential_scope);
-    return CURLE_OUT_OF_MEMORY;
-  }
+  if(Curl_sha256it(sha_hash, (unsigned char *)canonical_request,
+                   strlen(canonical_request)))
+    goto fail;
 
   sha256_to_hex(sha_hex, sha_hash);
 
@@ -1056,69 +1052,36 @@ static CURLcode make_string_to_sign(struct Curl_easy *data,
                               "%s\n" /* RequestDateTime */
                               "%s\n" /* CredentialScope */
                               "%s",  /* HashedCanonicalRequest in hex */
-                              (int)curlx_strlen(provider0),
-                              curlx_str(provider0),
+                              (int)curlx_strlen(&provider0),
+                              curlx_str(&provider0),
                               timestamp,
                               credential_scope,
                               sha_hex);
-  if(!str_to_sign) {
-    curlx_free(request_type);
-    curlx_free(credential_scope);
-    return CURLE_OUT_OF_MEMORY;
-  }
+  if(!str_to_sign)
+    goto fail;
 
   /* make provider0 part done uppercase */
-  Curl_strntoupper(str_to_sign, curlx_str(provider0),
-                   curlx_strlen(provider0));
+  Curl_strntoupper(str_to_sign, curlx_str(&provider0),
+                   curlx_strlen(&provider0));
 
   infof(data, "aws_sigv4: String to sign (enclosed in []) - [%s]",
         str_to_sign);
 
-  *request_type_out = request_type;
-  *credential_scope_out = credential_scope;
-  *str_to_sign_out = str_to_sign;
-  return CURLE_OK;
-}
-
-static CURLcode sign_and_set_auth_headers(struct Curl_easy *data,
-                                          struct Curl_str *provider0,
-                                          struct Curl_str *region,
-                                          struct Curl_str *service,
-                                          const char *request_type,
-                                          const char *credential_scope,
-                                          const char *date,
-                                          const char *str_to_sign,
-                                          const char *date_header,
-                                          const char *content_sha256_hdr,
-                                          struct dynbuf *signed_headers)
-{
-  CURLcode result = CURLE_OUT_OF_MEMORY;
-  const char *passwd = Curl_creds_passwd(data->state.creds);
-  char *secret = NULL;
-  unsigned char sign0[CURL_SHA256_DIGEST_LENGTH] = { 0 };
-  unsigned char sign1[CURL_SHA256_DIGEST_LENGTH] = { 0 };
-  char sha_hex[SHA256_HEX_LENGTH];
-  char *auth_headers = NULL;
-  char *user = curl_escape(Curl_creds_user(data->state.creds), 0);
-  if(!user)
-    return CURLE_OUT_OF_MEMORY;
-
-  secret = curl_maprintf("%.*s4%s", (int)curlx_strlen(provider0),
-                         curlx_str(provider0), passwd);
+  secret = curl_maprintf("%.*s4%s", (int)curlx_strlen(&provider0),
+                         curlx_str(&provider0), data->state.aptr.passwd ?
+                         data->state.aptr.passwd : "");
   if(!secret)
     goto fail;
   /* make provider0 part done uppercase */
-  Curl_strntoupper(secret, curlx_str(provider0), curlx_strlen(provider0));
+  Curl_strntoupper(secret, curlx_str(&provider0), curlx_strlen(&provider0));
 
   HMAC_SHA256(secret, strlen(secret), date, strlen(date), sign0);
   HMAC_SHA256(sign0, sizeof(sign0),
-              curlx_str(region), curlx_strlen(region), sign1);
+              curlx_str(&region), curlx_strlen(&region), sign1);
   HMAC_SHA256(sign1, sizeof(sign1),
-              curlx_str(service), curlx_strlen(service), sign0);
-  HMAC_SHA256(sign0, sizeof(sign0),
-              request_type, strlen(request_type), sign1);
-  HMAC_SHA256(sign1, sizeof(sign1),
-              str_to_sign, strlen(str_to_sign), sign0);
+              curlx_str(&service), curlx_strlen(&service), sign0);
+  HMAC_SHA256(sign0, sizeof(sign0), request_type, strlen(request_type), sign1);
+  HMAC_SHA256(sign1, sizeof(sign1), str_to_sign, strlen(str_to_sign), sign0);
 
   sha256_to_hex(sha_hex, sign0);
 
@@ -1128,119 +1091,43 @@ static CURLcode sign_and_set_auth_headers(struct Curl_easy *data,
                                "Credential=%s/%s, "
                                "SignedHeaders=%s, "
                                "Signature=%s\r\n"
-                               "%s"
-                               "%s%s",
-                               (int)curlx_strlen(provider0),
-                               curlx_str(provider0),
-                               user,
-                               credential_scope,
-                               curlx_dyn_ptr(signed_headers),
-                               sha_hex,
                                /*
                                 * date_header is added here, only if it was not
                                 * user-specified (using CURLOPT_HTTPHEADER).
                                 * date_header includes \r\n
                                 */
+                               "%s"
+                               "%s", /* optional sha256 header includes \r\n */
+                               (int)curlx_strlen(&provider0),
+                               curlx_str(&provider0),
+                               user,
+                               credential_scope,
+                               curlx_dyn_ptr(&signed_headers),
+                               sha_hex,
                                date_header ? date_header : "",
-                               content_sha256_hdr,
-                               content_sha256_hdr[0] ? "\r\n": "");
-  if(!auth_headers)
+                               content_sha256_hdr);
+  if(!auth_headers) {
     goto fail;
-
+  }
   /* provider 0 uppercase */
   Curl_strntoupper(&auth_headers[sizeof("Authorization: ") - 1],
-                   curlx_str(provider0), curlx_strlen(provider0));
+                   curlx_str(&provider0), curlx_strlen(&provider0));
 
-  curlx_free(data->req.hd_auth);
-  data->req.hd_auth = auth_headers;
+  curlx_free(data->req.userpwd);
+  data->req.userpwd = auth_headers;
   data->state.authhost.done = TRUE;
   result = CURLE_OK;
 
 fail:
-  curlx_free(user);
-  curlx_free(secret);
-  return result;
-}
-
-CURLcode Curl_output_aws_sigv4(struct Curl_easy *data)
-{
-  CURLcode result = CURLE_OUT_OF_MEMORY;
-  struct Curl_str provider0 = { NULL, 0 };
-  struct Curl_str provider1 = { NULL, 0 };
-  struct Curl_str region = { NULL, 0 };
-  struct Curl_str service = { NULL, 0 };
-  const char *hostname = data->state.origin->hostname;
-  char timestamp[TIMESTAMP_SIZE];
-  char date[9];
-  struct dynbuf canonical_headers;
-  struct dynbuf signed_headers;
-  char *date_header = NULL;
-  Curl_HttpReq httpreq;
-  const char *method = NULL;
-  const char *payload_hash = NULL;
-  size_t payload_hash_len = 0;
-  unsigned char sha_hash[CURL_SHA256_DIGEST_LENGTH];
-  char sha_hex[SHA256_HEX_LENGTH];
-  char content_sha256_hdr[CONTENT_SHA256_HDR_LEN + 2] = ""; /* add \r\n */
-  char *canonical_request = NULL;
-  char *request_type = NULL;
-  char *credential_scope = NULL;
-  char *str_to_sign = NULL;
-
-  if(data->set.path_as_is) {
-    failf(data, "Cannot use sigv4 authentication with path-as-is flag");
-    return CURLE_BAD_FUNCTION_ARGUMENT;
-  }
-
-  if(Curl_checkheaders(data, STRCONST("Authorization")))
-    /* Authorization already present, Bailing out */
-    return CURLE_OK;
-
-  /* we init those buffers here, so goto fail will free initialized dynbuf */
-  curlx_dyn_init(&canonical_headers, CURL_MAX_HTTP_HEADER);
-  curlx_dyn_init(&signed_headers, CURL_MAX_HTTP_HEADER);
-
-  result = parse_sigv4_params(data, hostname, &provider0, &provider1,
-                              &region, &service);
-  if(!result) {
-    Curl_http_method(data, &method, &httpreq);
-    result = get_payload_hash(data, httpreq, &provider0, &provider1, &service,
-                              sha_hash, sha_hex, content_sha256_hdr,
-                              &payload_hash, &payload_hash_len);
-  }
-
-  if(!result)
-    result = get_timestamp(timestamp, sizeof(timestamp));
-
-  if(!result)
-    result = make_canonical_request(data, hostname, timestamp,
-                                    &provider1, &service,
-                                    method, payload_hash, payload_hash_len,
-                                    &date_header, content_sha256_hdr,
-                                    &canonical_headers, &signed_headers,
-                                    &canonical_request);
-  if(!result) {
-    /* the timestamp might have been updated in make_canonical_request */
-    memcpy(date, timestamp, sizeof(date) - 1);
-    date[sizeof(date) - 1] = 0;
-
-    result = make_string_to_sign(data, &provider0, &region, &service,
-                                 date, timestamp, canonical_request,
-                                 &request_type, &credential_scope,
-                                 &str_to_sign);
-  }
-  if(!result)
-    result = sign_and_set_auth_headers(data, &provider0, &region, &service,
-                                       request_type, credential_scope,
-                                       date, str_to_sign, date_header,
-                                       content_sha256_hdr, &signed_headers);
-
+  curlx_dyn_free(&canonical_query);
+  curlx_dyn_free(&canonical_path);
   curlx_dyn_free(&canonical_headers);
   curlx_dyn_free(&signed_headers);
   curlx_free(canonical_request);
   curlx_free(request_type);
   curlx_free(credential_scope);
   curlx_free(str_to_sign);
+  curlx_free(secret);
   curlx_free(date_header);
   return result;
 }

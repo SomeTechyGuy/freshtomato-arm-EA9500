@@ -54,7 +54,7 @@ void Curl_cshutdn_terminate(struct Curl_easy *data,
 struct cshutdn {
   struct Curl_llist list;    /* connections being shut down */
   struct Curl_multi *multi;  /* the multi owning this */
-  BIT(initialized);
+  BIT(initialised);
 };
 
 /* Init as part of the given multi handle. */

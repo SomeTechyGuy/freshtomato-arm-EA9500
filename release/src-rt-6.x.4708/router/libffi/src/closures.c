@@ -393,9 +393,11 @@ ffi_closure_free (void *ptr)
 
 #define USE_LOCKS 1
 #define USE_DL_PREFIX 1
-/* dlmalloc's bit-index macros use __builtin_clz/__builtin_ctz directly on any
-   GNU-compatible compiler, so USE_BUILTIN_FFS (and pulling in <strings.h> for
-   ffs()) is no longer needed (libffi #754).  */
+#ifdef __GNUC__
+#ifndef USE_BUILTIN_FFS
+#define USE_BUILTIN_FFS 1
+#endif
+#endif
 
 /* We need to use mmap, not sbrk.  */
 #define HAVE_MORECORE 0

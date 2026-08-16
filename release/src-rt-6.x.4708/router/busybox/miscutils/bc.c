@@ -5525,7 +5525,7 @@ static void xc_program_printString(const char *str)
 		char c = *str++;
 		if (c == '\\') {
 			static const char esc[] ALIGN1 = "nabfrt""e\\";
-			const char *n;
+			char *n;
 
 			c = *str++;
 			n = strchr(esc, c); // note: if c is NUL, n = \0 at end of esc

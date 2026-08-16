@@ -2518,10 +2518,9 @@ skip_hmac:
                             exit(1);
                         }
 
-                        if (EVP_CIPHER_CTX_ctrl(loopargs[k].ctx,
+                        if (!EVP_CIPHER_CTX_ctrl(loopargs[k].ctx,
                                 EVP_CTRL_AEAD_GET_TAG,
-                                TAG_LEN, &loopargs[k].tag)
-                            <= 0) {
+                                TAG_LEN, &loopargs[k].tag)) {
                             BIO_printf(bio_err, "\nFailed to get the tag\n");
                             ERR_print_errors(bio_err);
                             exit(1);

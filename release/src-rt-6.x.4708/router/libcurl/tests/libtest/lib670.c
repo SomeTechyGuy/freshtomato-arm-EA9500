@@ -105,13 +105,13 @@ static CURLcode test_lib670(const char *URL)
   pooh.curl = curl_easy_init();
 
   /* First set the URL that is about to receive our POST. */
-  easy_setopt(pooh.curl, CURLOPT_URL, URL);
+  test_setopt(pooh.curl, CURLOPT_URL, URL);
 
   /* get verbose debug output please */
-  easy_setopt(pooh.curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(pooh.curl, CURLOPT_VERBOSE, 1L);
 
   /* include headers in the output */
-  easy_setopt(pooh.curl, CURLOPT_HEADER, 1L);
+  test_setopt(pooh.curl, CURLOPT_HEADER, 1L);
 
   if(testnum == 670 || testnum == 671) {
     curl_mimepart *part;
@@ -122,7 +122,7 @@ static CURLcode test_lib670(const char *URL)
     if(result != CURLE_OK) {
       curl_mfprintf(stderr,
                     "Something went wrong when building the "
-                    "mime structure: %d\n", (int)result);
+                    "mime structure: %d\n", result);
       goto test_cleanup;
     }
 
@@ -131,7 +131,7 @@ static CURLcode test_lib670(const char *URL)
 
     /* Bind mime data to its easy handle. */
     if(result == CURLE_OK)
-      easy_setopt(pooh.curl, CURLOPT_MIMEPOST, mime);
+      test_setopt(pooh.curl, CURLOPT_MIMEPOST, mime);
   }
   else {
     struct curl_httppost *lastptr = NULL;
@@ -140,18 +140,18 @@ static CURLcode test_lib670(const char *URL)
     formrc = curl_formadd(&formpost, &lastptr,
                           CURLFORM_COPYNAME, testname,
                           CURLFORM_STREAM, &pooh,
-                          CURLFORM_CONTENTLEN, (curl_off_t)2,
+                          CURLFORM_CONTENTLEN, (curl_off_t) 2,
                           CURLFORM_END);
     if(formrc) {
-      curl_mfprintf(stderr, "curl_formadd() = %d\n", (int)formrc);
+      curl_mfprintf(stderr, "curl_formadd() = %d\n", formrc);
       goto test_cleanup;
     }
 
     /* We want to use our own read function. */
-    easy_setopt(pooh.curl, CURLOPT_READFUNCTION, t670_read_cb);
+    test_setopt(pooh.curl, CURLOPT_READFUNCTION, t670_read_cb);
 
     /* Send a multi-part formpost. */
-    easy_setopt(pooh.curl, CURLOPT_HTTPPOST, formpost);
+    test_setopt(pooh.curl, CURLOPT_HTTPPOST, formpost);
   }
 
   if(testnum == 670 || testnum == 672) {
@@ -223,9 +223,9 @@ static CURLcode test_lib670(const char *URL)
   }
   else {
     /* Use the easy interface. */
-    easy_setopt(pooh.curl, CURLOPT_XFERINFODATA, &pooh);
-    easy_setopt(pooh.curl, CURLOPT_XFERINFOFUNCTION, t670_xferinfo);
-    easy_setopt(pooh.curl, CURLOPT_NOPROGRESS, 0L);
+    test_setopt(pooh.curl, CURLOPT_XFERINFODATA, &pooh);
+    test_setopt(pooh.curl, CURLOPT_XFERINFOFUNCTION, t670_xferinfo);
+    test_setopt(pooh.curl, CURLOPT_NOPROGRESS, 0L);
     result = curl_easy_perform(pooh.curl);
   }
 

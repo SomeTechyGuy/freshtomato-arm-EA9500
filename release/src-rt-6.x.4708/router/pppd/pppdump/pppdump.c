@@ -42,12 +42,14 @@ int tot_sent, tot_rcvd;
 extern int optind;
 extern char *optarg;
 
-void dumplog(FILE *);
-void dumpppp(FILE *);
-void show_time(FILE *, int);
+void dumplog();
+void dumpppp();
+void show_time();
 
 int
-main(int ac, char **av)
+main(ac, av)
+    int ac;
+    char **av;
 {
     int i;
     char *p;
@@ -95,7 +97,8 @@ main(int ac, char **av)
 }
 
 void
-dumplog(FILE *f)
+dumplog(f)
+    FILE *f;
 {
     int c, n, k, col;
     int nb, c2;
@@ -238,7 +241,8 @@ struct pkt {
 unsigned char dbuf[8192];
 
 void
-dumpppp(FILE *f)
+dumpppp(f)
+    FILE *f;
 {
     int c, n, k;
     int nb, nl, dn, proto, rv;
@@ -371,7 +375,9 @@ dumpppp(FILE *f)
 }
 
 void
-show_time(FILE *f, int c)
+show_time(f, c)
+    FILE *f;
+    int c;
 {
     time_t t;
     int n;

@@ -31,12 +31,15 @@
 int which_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
 int which_main(int argc UNUSED_PARAM, char **argv)
 {
-	const char *env_path;
+	char *env_path;
 	int status = 0;
+	/* This sizeof(): bb_default_root_path is shorter than BB_PATH_ROOT_PATH */
+	char buf[sizeof(BB_PATH_ROOT_PATH)];
 
 	env_path = getenv("PATH");
 	if (!env_path)
-		env_path = bb_default_root_path;
+		/* env_path must be writable, and must not alloc, so... */
+		env_path = strcpy(buf, bb_default_root_path);
 
 	getopt32(argv, "^" "a" "\0" "-1"/*at least one arg*/);
 	argv += optind;
@@ -51,7 +54,7 @@ int which_main(int argc UNUSED_PARAM, char **argv)
 				puts(*argv);
 			}
 		} else {
-			const char *path;
+			char *path;
 			char *p;
 
 			path = env_path;

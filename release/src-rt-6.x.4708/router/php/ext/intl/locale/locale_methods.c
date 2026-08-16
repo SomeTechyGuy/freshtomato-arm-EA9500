@@ -1230,7 +1230,7 @@ static int strToMatch(const char* str ,char *retstr)
 			if( *str == '-' ){
 				*retstr =  '_';
 			} else {
-				*retstr = tolower((unsigned char)*str);
+				*retstr = tolower(*str);
 			}
 				str++;
 				retstr++;

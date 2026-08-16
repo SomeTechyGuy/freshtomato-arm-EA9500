@@ -211,7 +211,8 @@ void write_control_auth(struct tls_session *session, struct key_state *ks, struc
  * @return                  if the packet was successfully processed
  */
 bool read_control_auth(struct buffer *buf, struct tls_wrap_ctx *ctx,
-                       const struct link_socket_actual *from, const struct tls_options *opt);
+                       const struct link_socket_actual *from, const struct tls_options *opt,
+                       bool initial_packet);
 
 
 /**

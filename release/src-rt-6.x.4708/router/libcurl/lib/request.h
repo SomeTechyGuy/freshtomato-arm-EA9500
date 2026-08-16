@@ -114,9 +114,9 @@ struct SingleRequest {
                        wanted */
   uint8_t io_flags; /* REQ_IO_RECV | REQ_IO_SEND */
 
-  char *hd_auth;      /* Authorization header, full HTTP/1.x line */
+  char *userpwd;      /* auth header */
 #ifndef CURL_DISABLE_PROXY
-  char *hd_proxy_auth; /* Proxy-Authorization header, full HTTP/1.x line */
+  char *proxyuserpwd; /* proxy auth header */
 #endif
 #ifndef CURL_DISABLE_COOKIES
   char *cookiehost;

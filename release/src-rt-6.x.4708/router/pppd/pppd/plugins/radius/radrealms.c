@@ -46,7 +46,7 @@ lookup_realm(char const *user,
 	     SERVER **authserver,
 	     SERVER **acctserver)
 {
-    const char *realm;
+    char *realm;
     FILE *fd;
     SERVER *accts, *auths, *s;
     char buffer[512], *p;

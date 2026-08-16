@@ -23,6 +23,8 @@
  ***************************************************************************/
 #include "first.h"
 
+#include "testutil.h"
+
 /*
  * Test GET_PARAMETER: PUT, HEARTBEAT, and POST
  */
@@ -50,11 +52,11 @@ static CURLcode test_lib572(const char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
 
-  easy_setopt(curl, CURLOPT_HEADERDATA, stdout);
-  easy_setopt(curl, CURLOPT_WRITEDATA, stdout);
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_HEADERDATA, stdout);
+  test_setopt(curl, CURLOPT_WRITEDATA, stdout);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_URL, URL);
 
   /* SETUP */
   stream_uri = tutil_suburl(URL, request++);
@@ -62,12 +64,12 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
+  test_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
   curl_free(stream_uri);
   stream_uri = NULL;
 
-  easy_setopt(curl, CURLOPT_RTSP_TRANSPORT, "Planes/Trains/Automobiles");
-  easy_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
+  test_setopt(curl, CURLOPT_RTSP_TRANSPORT, "Planes/Trains/Automobiles");
+  test_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
   result = curl_easy_perform(curl);
   if(result)
     goto test_cleanup;
@@ -77,7 +79,7 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
+  test_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
   curl_free(stream_uri);
   stream_uri = NULL;
 
@@ -101,17 +103,17 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_GET_PARAMETER);
+  test_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_GET_PARAMETER);
 
-  easy_setopt(curl, CURLOPT_READDATA, paramsf);
-  easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-  easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)file_info.st_size);
+  test_setopt(curl, CURLOPT_READDATA, paramsf);
+  test_setopt(curl, CURLOPT_UPLOAD, 1L);
+  test_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)file_info.st_size);
 
   result = curl_easy_perform(curl);
   if(result)
     goto test_cleanup;
 
-  easy_setopt(curl, CURLOPT_UPLOAD, 0L);
+  test_setopt(curl, CURLOPT_UPLOAD, 0L);
   curlx_fclose(paramsf);
   paramsf = NULL;
 
@@ -121,7 +123,7 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
+  test_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
   curl_free(stream_uri);
   stream_uri = NULL;
 
@@ -136,18 +138,18 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
+  test_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
   curl_free(stream_uri);
   stream_uri = NULL;
 
-  easy_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_GET_PARAMETER);
-  easy_setopt(curl, CURLOPT_POSTFIELDS, "packets_received\njitter\n");
+  test_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_GET_PARAMETER);
+  test_setopt(curl, CURLOPT_POSTFIELDS, "packets_received\njitter\n");
 
   result = curl_easy_perform(curl);
   if(result)
     goto test_cleanup;
 
-  easy_setopt(curl, CURLOPT_POSTFIELDS, NULL);
+  test_setopt(curl, CURLOPT_POSTFIELDS, NULL);
 
   /* Make sure we can do a normal request now */
   stream_uri = tutil_suburl(URL, request++);
@@ -155,11 +157,11 @@ static CURLcode test_lib572(const char *URL)
     result = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }
-  easy_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
+  test_setopt(curl, CURLOPT_RTSP_STREAM_URI, stream_uri);
   curl_free(stream_uri);
   stream_uri = NULL;
 
-  easy_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_OPTIONS);
+  test_setopt(curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_OPTIONS);
   result = curl_easy_perform(curl);
 
 test_cleanup:

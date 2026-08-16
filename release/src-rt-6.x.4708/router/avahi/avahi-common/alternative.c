@@ -21,7 +21,6 @@
 #include <config.h>
 #endif
 
-#include <limits.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -50,20 +49,15 @@ static void drop_incomplete_utf8(char *c) {
 }
 
 char *avahi_alternative_host_name(const char *s) {
-    char label[AVAHI_LABEL_MAX], alternative[AVAHI_LABEL_MAX*4+1];
-    char *alt, *r, *ret;
     const char *e;
-    size_t len;
+    char *r;
 
     assert(s);
 
     if (!avahi_is_valid_host_name(s))
         return NULL;
 
-    if (!avahi_unescape_label(&s, label, sizeof(label)))
-        return NULL;
-
-    if ((e = strrchr(label, '-'))) {
+    if ((e = strrchr(s, '-'))) {
         const char *p;
 
         e++;
@@ -80,22 +74,19 @@ char *avahi_alternative_host_name(const char *s) {
 
     if (e) {
         char *c, *m;
+        size_t l;
         int n;
 
-        n = atoi(e);
-        if (n == INT_MAX)
-            n = 1;
-        else
-            n++;
+        n = atoi(e)+1;
         if (!(m = avahi_strdup_printf("%i", n)))
             return NULL;
 
-        len = e-label-1;
+        l = e-s-1;
 
-        if (len >= AVAHI_LABEL_MAX-1-strlen(m)-1)
-            len = AVAHI_LABEL_MAX-1-strlen(m)-1;
+        if (l >= AVAHI_LABEL_MAX-1-strlen(m)-1)
+            l = AVAHI_LABEL_MAX-1-strlen(m)-1;
 
-        if (!(c = avahi_strndup(label, len))) {
+        if (!(c = avahi_strndup(s, l))) {
             avahi_free(m);
             return NULL;
         }
@@ -109,7 +100,7 @@ char *avahi_alternative_host_name(const char *s) {
     } else {
         char *c;
 
-        if (!(c = avahi_strndup(label, AVAHI_LABEL_MAX-1-2)))
+        if (!(c = avahi_strndup(s, AVAHI_LABEL_MAX-1-2)))
             return NULL;
 
         drop_incomplete_utf8(c);
@@ -117,13 +108,6 @@ char *avahi_alternative_host_name(const char *s) {
         r = avahi_strdup_printf("%s-2", c);
         avahi_free(c);
     }
-
-    alt = alternative;
-    len = sizeof(alternative);
-    ret = avahi_escape_label(r, strlen(r), &alt, &len);
-
-    avahi_free(r);
-    r = avahi_strdup(ret);
 
     assert(avahi_is_valid_host_name(r));
 
@@ -161,11 +145,7 @@ char *avahi_alternative_service_name(const char *s) {
         size_t l;
         int n;
 
-        n = atoi(e);
-        if (n == INT_MAX)
-            n = 1;
-        else
-            n++;
+        n = atoi(e)+1;
         if (!(m = avahi_strdup_printf("%i", n)))
             return NULL;
 

@@ -176,7 +176,6 @@ struct globals {
 	smallint prg_cache_loaded;
 	struct prg_node *prg_hash[PRG_HASH_SIZE];
 #endif
-	char *p_etc_services;
 #if ENABLE_FEATURE_NETSTAT_PRG
 	const char *progname_banner;
 #endif
@@ -379,20 +378,20 @@ static void build_ipv4_addr(char* local_addr, struct sockaddr_in* localaddr)
 
 static const char *get_sname(int port, const char *proto, int numeric)
 {
-	if (port == 0)
+	if (!port)
 		return "*";
 	if (!numeric) {
-		const char *se = bb_get_servname_by_port(&G.p_etc_services, port, proto);
+		struct servent *se = getservbyport(port, proto);
 		if (se)
-			return se;
+			return se->s_name;
 	}
 	/* hummm, we may return static buffer here!! */
-	return itoa(port);
+	return itoa(ntohs(port));
 }
 
 static char *ip_port_str(struct sockaddr *addr, int port, const char *proto, int numeric)
 {
-	char *host;
+	char *host, *host_port;
 
 	/* Code which used "*" for INADDR_ANY is removed: it's ambiguous
 	 * in IPv6, while "0.0.0.0" is not. */
@@ -403,8 +402,9 @@ static char *ip_port_str(struct sockaddr *addr, int port, const char *proto, int
 	if (!host)
 		host = xmalloc_sockaddr2dotted_noport(addr);
 
-	xasprintf_inplace(host, "%s:%s", host, get_sname(port, proto, numeric));
-	return host;
+	host_port = xasprintf("%s:%s", host, get_sname(htons(port), proto, numeric));
+	free(host);
+	return host_port;
 }
 
 struct inet_params {

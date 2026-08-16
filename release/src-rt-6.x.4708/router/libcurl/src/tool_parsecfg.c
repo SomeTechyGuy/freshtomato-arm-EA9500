@@ -77,18 +77,15 @@ static int unslashquote(const char *line, struct dynbuf *param)
   return 0; /* ok */
 }
 
-/*
- * Open the config file. When filename is NULL, tries to find .curlrc in the
- * home directory (and on Windows, in the executable directory). Updates
- * *namep to the effective filename and *pathalloc to any allocated path
- * that must be freed by the caller. Returns the opened FILE or NULL.
- */
-static FILE *open_config_file(const char *filename,
-                              const char **namep,
-                              char **pathalloc)
+/* return 0 on everything-is-fine, and non-zero otherwise */
+ParameterError parseconfig(const char *filename, int max_recursive,
+                           char **resolved)
 {
   FILE *file = NULL;
-  *pathalloc = NULL;
+  bool usedarg = FALSE;
+  ParameterError err = PARAM_OK;
+  struct OperationConfig *config = global->last;
+  char *pathalloc = NULL;
 
   if(!filename) {
     /* NULL means load .curlrc from homedir! */
@@ -97,9 +94,9 @@ static FILE *open_config_file(const char *filename,
       file = curlx_fopen(curlrc, FOPEN_READTEXT);
       if(!file) {
         curlx_free(curlrc);
-        return NULL;
+        return PARAM_READ_ERROR;
       }
-      *namep = *pathalloc = curlrc;
+      filename = pathalloc = curlrc;
     }
 #ifdef _WIN32
     else {
@@ -110,154 +107,16 @@ static FILE *open_config_file(const char *filename,
         file = tool_execpath("_curlrc", &fullp);
       if(file)
         /* this is the filename we read from */
-        *namep = fullp;
+        filename = fullp;
     }
 #endif
   }
   else {
     if(strcmp(filename, "-"))
       file = curlx_fopen(filename, FOPEN_READTEXT);
-    else {
+    else
       file = stdin;
-      *namep = "<stdin>";
-    }
   }
-  return file;
-}
-
-/*
- * Extract the parameter value from a config line. The line pointer should
- * be positioned after the option keyword has been null-terminated.
- * Skips separators and whitespace, then handles quoted and unquoted
- * parameter values. Sets *param_out to the parameter string; unquoted empty
- * values set it to NULL, while quoted empty values become an empty string.
- */
-static ParameterError extract_param(char *line,
-                                    bool dashed_option,
-                                    struct dynbuf *pbuf,
-                                    const char *filename,
-                                    int lineno,
-                                    const char *option,
-                                    char **param_out)
-{
-  /* pass spaces and separator(s) */
-  while(ISBLANK(*line) || ISSEP(*line, dashed_option))
-    line++;
-
-  /* the parameter starts here (unless quoted) */
-  if(*line == '\"') {
-    /* quoted parameter, do the quote dance */
-    int rc = unslashquote(++line, pbuf);
-    if(rc)
-      return PARAM_BAD_USE;
-    *param_out = curlx_dyn_len(pbuf) ? curlx_dyn_ptr(pbuf) : CURL_UNCONST("");
-  }
-  else {
-    if(*line == '\'') {
-      warnf("%s:%d Option '%s' uses argument with leading single quote. "
-            "It is probably a mistake. Consider double quotes.",
-            filename, lineno, option);
-    }
-    *param_out = line; /* parameter starts here */
-    while(*line && !ISSPACE(*line)) /* stop also on CRLF */
-      line++;
-
-    if(*line) {
-      *line = '\0'; /* null-terminate */
-
-      /* to detect mistakes better, see if there is data following */
-      line++;
-      /* pass all spaces */
-      while(ISBLANK(*line))
-        line++;
-
-      switch(*line) {
-      case '\0':
-      case '\r':
-      case '\n':
-      case '#': /* comment */
-        break;
-      default:
-        warnf("%s:%d Option '%s' uses argument with unquoted whitespace. "
-              "This may cause side-effects. Consider double quotes.",
-              filename, lineno, option);
-      }
-    }
-    if(!**param_out)
-      /* do this so getparameter can check for required parameters.
-         Otherwise it always thinks there is a parameter. */
-      *param_out = NULL;
-  }
-  return PARAM_OK;
-}
-
-/*
- * Process the result from getparameter. Handles PARAM_NEXT_OPERATION
- * by allocating a new config, and reports errors for other non-OK results.
- * Updates *configp if a new operation config is allocated.
- * Returns PARAM_OK if processing should continue, or an error code.
- */
-static ParameterError process_config_result(ParameterError res,
-                                            struct OperationConfig **configp,
-                                            const char *param,
-                                            bool usedarg,
-                                            const char *filename,
-                                            int lineno,
-                                            const char *option)
-{
-  if(!res && param && *param && !usedarg)
-    /* we passed in a parameter that was not used! */
-    res = PARAM_GOT_EXTRA_PARAMETER;
-
-  if(res == PARAM_NEXT_OPERATION) {
-    struct OperationConfig *config = *configp;
-    if(config->url_list && config->url_list->url) {
-      /* Allocate the next config */
-      config->next = config_alloc();
-      if(config->next) {
-        /* Update the last operation pointer */
-        global->last = config->next;
-
-        /* Move onto the new config */
-        config->next->prev = config;
-        *configp = config->next;
-      }
-      else
-        res = PARAM_NO_MEM;
-    }
-  }
-
-  if(res != PARAM_OK && res != PARAM_NEXT_OPERATION) {
-    const char *display = filename;
-    /* the help request is not really an error */
-    if(!strcmp(filename, "-"))
-      display = "<stdin>";
-    if(res != PARAM_HELP_REQUESTED &&
-       res != PARAM_MANUAL_REQUESTED &&
-       res != PARAM_VERSION_INFO_REQUESTED &&
-       res != PARAM_ENGINES_REQUESTED &&
-       res != PARAM_CA_EMBED_REQUESTED) {
-      const char *reason = param2text(res);
-      errorf("%s:%d config file option '%s' %s",
-             display, lineno, option, reason);
-      if(res == PARAM_OPTION_UNKNOWN)
-        res = PARAM_CONFIG_OPTION_UNKNOWN;
-      return res;
-    }
-  }
-  return PARAM_OK;
-}
-
-ParameterError parseconfig(const char *filename, int max_recursive,
-                           char **resolved)
-{
-  FILE *file = NULL;
-  bool usedarg = FALSE;
-  ParameterError err = PARAM_OK;
-  struct OperationConfig *config = global->last;
-  char *pathalloc = NULL;
-
-  file = open_config_file(filename, &filename, &pathalloc);
 
   if(file) {
     char *line;
@@ -292,20 +151,109 @@ ParameterError parseconfig(const char *filename, int max_recursive,
       /* ... and has ended here */
 
       if(*line)
-        *line++ = '\0'; /* null-terminate, we have a local copy */
+        *line++ = '\0'; /* null-terminate, we have a local copy of the data */
 
-      /* if there is a parameter for this option, extract it */
-      err = extract_param(line, dashed_option, &pbuf, filename, lineno,
-                          option, &param);
-      if(err)
-        break;
+#ifdef DEBUG_CONFIG
+      curl_mfprintf(tool_stderr, "GOT: %s\n", option);
+#endif
 
+      /* pass spaces and separator(s) */
+      while(ISBLANK(*line) || ISSEP(*line, dashed_option))
+        line++;
+
+      /* the parameter starts here (unless quoted) */
+      if(*line == '\"') {
+        /* quoted parameter, do the quote dance */
+        int rc = unslashquote(++line, &pbuf);
+        if(rc) {
+          err = PARAM_BAD_USE;
+          break;
+        }
+        param = curlx_dyn_len(&pbuf) ? curlx_dyn_ptr(&pbuf) : CURL_UNCONST("");
+      }
+      else {
+        if(*line == '\'') {
+          warnf("%s:%d Option '%s' uses argument with leading single quote. "
+                "It is probably a mistake. Consider double quotes.",
+                filename, lineno, option);
+        }
+        param = line; /* parameter starts here */
+        while(*line && !ISSPACE(*line)) /* stop also on CRLF */
+          line++;
+
+        if(*line) {
+          *line = '\0'; /* null-terminate */
+
+          /* to detect mistakes better, see if there is data following */
+          line++;
+          /* pass all spaces */
+          while(ISBLANK(*line))
+            line++;
+
+          switch(*line) {
+          case '\0':
+          case '\r':
+          case '\n':
+          case '#': /* comment */
+            break;
+          default:
+            warnf("%s:%d Option '%s' uses argument with unquoted whitespace. "
+                  "This may cause side-effects. Consider double quotes.",
+                  filename, lineno, option);
+          }
+        }
+        if(!*param)
+          /* do this so getparameter can check for required parameters.
+             Otherwise it always thinks there is a parameter. */
+          param = NULL;
+      }
+
+#ifdef DEBUG_CONFIG
+      curl_mfprintf(tool_stderr, "PARAM: \"%s\"\n",
+                    (param ? param : "(null)"));
+#endif
       res = getparameter(option, param, &usedarg, config, max_recursive);
-
       config = global->last;
 
-      err = process_config_result(res, &config, param, usedarg, filename,
-                                  lineno, option);
+      if(!res && param && *param && !usedarg)
+        /* we passed in a parameter that was not used! */
+        res = PARAM_GOT_EXTRA_PARAMETER;
+
+      if(res == PARAM_NEXT_OPERATION) {
+        if(config->url_list && config->url_list->url) {
+          /* Allocate the next config */
+          config->next = config_alloc();
+          if(config->next) {
+            /* Update the last operation pointer */
+            global->last = config->next;
+
+            /* Move onto the new config */
+            config->next->prev = config;
+            config = config->next;
+          }
+          else
+            res = PARAM_NO_MEM;
+        }
+      }
+
+      if(res != PARAM_OK && res != PARAM_NEXT_OPERATION) {
+        /* the help request is not really an error */
+        if(!strcmp(filename, "-")) {
+          filename = "<stdin>";
+        }
+        if(res != PARAM_HELP_REQUESTED &&
+           res != PARAM_MANUAL_REQUESTED &&
+           res != PARAM_VERSION_INFO_REQUESTED &&
+           res != PARAM_ENGINES_REQUESTED &&
+           res != PARAM_CA_EMBED_REQUESTED) {
+          const char *reason = param2text(res);
+          errorf("%s:%d config file option '%s' %s",
+                 filename, lineno, option, reason);
+          if(res == PARAM_OPTION_UNKNOWN)
+            res = PARAM_CONFIG_OPTION_UNKNOWN;
+          err = res;
+        }
+      }
     }
     curlx_dyn_free(&buf);
     curlx_dyn_free(&pbuf);

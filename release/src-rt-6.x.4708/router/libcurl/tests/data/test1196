@@ -28,7 +28,7 @@ mqtt
 mqtt
 </server>
 <name>
-MQTT with "unaccaptable protocol version" CONNACK
+MQTT with error in CONNACK
 </name>
 <command option="binary-trace">
 mqtt://%HOSTIP:%MQTTPORT/%TESTNUMBER

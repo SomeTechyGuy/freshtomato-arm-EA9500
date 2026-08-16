@@ -29,7 +29,7 @@ import os
 from typing import Generator
 
 import pytest
-from testenv import CurlClient, Dnsd, Env
+from testenv import CurlClient, Env, Dnsd
 
 log = logging.getLogger(__name__)
 

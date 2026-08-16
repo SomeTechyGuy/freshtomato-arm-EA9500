@@ -55,16 +55,16 @@ static CURLcode test_lib590(const char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
 
-  easy_setopt(curl, CURLOPT_URL, URL);
-  easy_setopt(curl, CURLOPT_HEADER, 1L);
-  easy_setopt(curl, CURLOPT_PROXYAUTH,
+  test_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_PROXYAUTH,
               CURLAUTH_BASIC | CURLAUTH_DIGEST | CURLAUTH_NTLM);
-  easy_setopt(curl, CURLOPT_PROXY, libtest_arg2); /* set in first.c */
+  test_setopt(curl, CURLOPT_PROXY, libtest_arg2); /* set in first.c */
 
   /* set the name + password twice to test that the API is fine with it */
-  easy_setopt(curl, CURLOPT_PROXYUSERNAME, "me");
-  easy_setopt(curl, CURLOPT_PROXYPASSWORD, "password");
-  easy_setopt(curl, CURLOPT_PROXYUSERPWD, "me:password");
+  test_setopt(curl, CURLOPT_PROXYUSERNAME, "me");
+  test_setopt(curl, CURLOPT_PROXYPASSWORD, "password");
+  test_setopt(curl, CURLOPT_PROXYUSERPWD, "me:password");
 
   result = curl_easy_perform(curl);
   if(result)

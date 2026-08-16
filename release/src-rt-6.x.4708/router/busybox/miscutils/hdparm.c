@@ -1464,17 +1464,15 @@ static void read_big_block(/*int fd,*/ char *buf)
 static unsigned dev_size_mb(/*int fd*/ void)
 {
 	union {
-		/* BLKGETSIZE64 takes pointer to uint64_t, not ullong */
-		uint64_t blksize64;
-		unsigned long blksize_long;
+		unsigned long long blksize64;
+		unsigned blksize32;
 	} u;
 
 	if (0 == ioctl(fd, BLKGETSIZE64, &u.blksize64)) { // bytes
 		u.blksize64 /= (1024 * 1024);
 	} else {
-		/* returns size in 512 blocks (not ioctl(BLKSSZ) sized blocks!) */
-		xioctl(fd, BLKGETSIZE, &u.blksize_long);
-		u.blksize64 = u.blksize_long / (2 * 1024);
+		xioctl(fd, BLKGETSIZE, &u.blksize32); // sectors
+		u.blksize64 = u.blksize32 / (2 * 1024);
 	}
 	if (u.blksize64 > UINT_MAX)
 		return UINT_MAX;

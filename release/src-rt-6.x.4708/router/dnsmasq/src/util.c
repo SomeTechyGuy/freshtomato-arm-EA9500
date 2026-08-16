@@ -136,15 +136,14 @@ static int check_name(char *in)
 {
   /* remove trailing . 
      also fail empty string and label > 63 chars */
-  size_t dotgap = 0, wiresize = 0, l = strlen(in);
+  size_t dotgap = 0, l = strlen(in);
   char c;
   int nowhite = 0;
   int idn_encode = 0;
   int hasuscore = 0;
   int hasucase = 0;
   
-  if (l == 0)
-    return 0;
+  if (l == 0 || l > MAXDNAME) return 0;
   
   if (in[l-1] == '.')
     {
@@ -155,10 +154,7 @@ static int check_name(char *in)
   for (; (c = *in); in++)
     {
       if (c == '.')
-        {
-	  wiresize += dotgap + 1;
-	  dotgap = 0;
-	}
+        dotgap = 0;
       else if (++dotgap > MAXLABEL)
         return 0;
       else if (isascii((unsigned char)c) && iscntrl((unsigned char)c)) 
@@ -199,10 +195,6 @@ static int check_name(char *in)
 #else
   idn_encode = idn_encode || hasucase;
 #endif
-
- /* length of final label and terminaton added */
-  if (!idn_encode && wiresize + dotgap + 2 >  MAXDNAME)
-    return 0; /* wire representation too long */
 
   return (idn_encode) ? 2 : 1;
 }
@@ -291,24 +283,20 @@ char *canonicalise(char *in, int *nomem)
   return ret;
 }
 
-unsigned char *do_rfc1035_name(unsigned char *p, char *sval, unsigned char *limit)
+unsigned char *do_rfc1035_name(unsigned char *p, char *sval, char *limit)
 {
   int j;
-
-  /* Never make a name larger than the RFC limit */
-  if (!limit || (limit - p > MAXDNAME))
-    limit = p + MAXDNAME;
   
   while (sval && *sval)
     {
       unsigned char *cp = p++;
 
-      if (p > limit)
+      if (limit && p > (unsigned char*)limit)
         return NULL;
 
       for (j = 0; *sval && (*sval != '.'); sval++, j++)
 	{
-          if (p + 1 > limit)
+          if (limit && p + 1 > (unsigned char*)limit)
             return NULL;
 
 	  if (*sval == NAME_ESCAPE)
@@ -439,14 +427,10 @@ int hostname_issubdomain(char *a, char *b)
   for (ap = a; *ap; ap++); 
   for (bp = b; *bp; bp++);
 
-  /* anything is a subdomain of the root domain. */
-  if (ap == a)
-    return (bp == b) ? 2 : 1;
-  
-  /* b shorter than a */
-  if ((bp - b) < (ap - a))
+  /* a shorter than b */
+  if ((ap - a) < (bp - b))
     return 0;
-  
+
   do
     {
       c1 = (unsigned char) *(--ap);
@@ -459,17 +443,18 @@ int hostname_issubdomain(char *a, char *b)
 
        if (c1 != c2)
 	 return 0;
-    } while (ap != a);
+    } while (bp != b);
 
-  if (bp == b)
+  if (ap == a)
     return 2;
 
-  if (*(--bp) == '.')
+  if (*(--ap) == '.')
     return 1;
 
   return 0;
 }
  
+  
 time_t dnsmasq_time(void)
 {
 #ifdef HAVE_BROKEN_RTC
@@ -692,24 +677,18 @@ int memcmp_masked(unsigned char *a, unsigned char *b, int len, unsigned int mask
   return count;
 }
 
-char *print_mac(unsigned char *mac, int len)
+char *print_mac(char *buff, unsigned char *mac, int len)
 {
-  static struct iovec buff = { NULL, 0 };
-  
-  /* each byte is two digits plus ':' except that last
-     which is two digits plus terminator. */
-  if (len == 0 || !expand_buf(&buff, len*3))
-    return "<null>";
+  char *p = buff;
+  int i;
+   
+  if (len == 0)
+    sprintf(p, "<null>");
   else
-    {
-      char *p =  buff.iov_base;
-      int i;
-
-      for (i = 0; i < len; i++)
-	p += sprintf(p, "%.2x%s", mac[i], (i == len - 1) ? "" : ":");
-    }
+    for (i = 0; i < len; i++)
+      p += sprintf(p, "%.2x%s", mac[i], (i == len - 1) ? "" : ":");
   
-  return buff.iov_base;
+  return buff;
 }
 
 /* rc is return from sendto and friends.
@@ -947,7 +926,7 @@ int kernel_version(void)
 }
 #endif
 
-#define hash_ptr(x) (((uintptr_t)(x)) & 0xffffff)
+#define hash_ptr(x) (((unsigned int)(((char *)(x)) - ((char *)NULL))) & 0xffffff)
 
 void *whine_malloc_real(const char *func, unsigned int line, size_t size)
 {
@@ -1035,56 +1014,4 @@ void free_real(const char *func, unsigned int line, void *ptr)
   
       free(ptr);
     }
-}
-
-/* get lines from f, expand buffer as required. Buffer is freed when
-   EOF reached and we return zero. Buffer also freed if f == NULL. */
-int get_line_alloc(FILE *f, char **buffp, size_t *sizep)
-{
-  size_t cnt = 0;
-  char *buff = *buffp;
-
-  while (1) {
-    int c = f ? getc(f) : EOF;
-        
-    if (cnt == *sizep)
-      {
-	void *new;
-	
-	if ((new = whine_realloc(buff, cnt + 1024)))
-	  {
-	    buff = *buffp = new;
-	    *sizep = cnt + 1024; 
-	  }
-	else
-	  {
-	    /* allocation failed, ignore line.
-	       Whine_realloc will have complained. */
-	    while (c != '\n' && c != EOF) 
-	      c = getc(f);
-	    
-	    cnt = 0;
-	    continue;
-	  }
-      }
-
-    buff[cnt] = 0;
-
-    if (c == '\n')
-      return 1;
-    
-    if (c == EOF)
-      {
-	/* handle last line without '\n' */
-	if (cnt != 0)
-	  return 1;
-
-	free(buff);
-	*buffp = NULL;
-	*sizep = 0;
-	return 0;
-      }
-	
-    buff[cnt++] = c;
-  }
 }

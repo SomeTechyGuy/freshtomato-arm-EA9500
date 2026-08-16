@@ -41,12 +41,11 @@ namespace Avahi
     }
 
     public enum EntryGroupState {
-        Uncommitted,
+        Uncommited,
         Registering,
         Established,
         Collision,
-        Failure,
-        Uncommited = Uncommitted, /* deprecated backward compatible value */
+        Failure
     }
 
     public class EntryGroupStateArgs : EventArgs

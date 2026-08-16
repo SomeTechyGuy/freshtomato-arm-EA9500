@@ -167,8 +167,7 @@ static CURLcode tftp_set_timeouts(struct tftp_conn *state)
   }
 
   /* Set per-block timeout to total */
-  if((timeout_ms > 0) && (timeout_ms < 3600000))
-    /* do the calculation only if the timeout is "reasonable" */
+  if(timeout_ms > 0)
     timeout = (time_t)(timeout_ms + 500) / 1000;
   else
     timeout = 15;
@@ -267,19 +266,16 @@ static CURLcode tftp_parse_option_ack(struct tftp_conn *state,
 
   while(tmp < ptr + len) {
     const char *option, *value;
-    size_t olen;
 
     tmp = tftp_option_get(tmp, ptr + len - tmp, &option, &value);
     if(!tmp) {
       failf(data, "Malformed ACK packet, rejecting");
       return CURLE_TFTP_ILLEGAL;
     }
-    olen = strlen(option);
 
     infof(data, "got option=(%s) value=(%s)", option, value);
 
-    if((strlen(TFTP_OPTION_BLKSIZE) == olen) &&
-       checkprefix(TFTP_OPTION_BLKSIZE, option)) {
+    if(checkprefix(TFTP_OPTION_BLKSIZE, option)) {
       curl_off_t blksize;
       if(curlx_str_number(&value, &blksize, TFTP_BLKSIZE_MAX)) {
         failf(data, "%s (%d)", "blksize is larger than max supported",
@@ -308,8 +304,7 @@ static CURLcode tftp_parse_option_ack(struct tftp_conn *state,
       infof(data, "blksize parsed from OACK (%u) requested (%u)",
             state->blksize, state->requested_blksize);
     }
-    else if((strlen(TFTP_OPTION_TSIZE) == olen) &&
-            checkprefix(TFTP_OPTION_TSIZE, option)) {
+    else if(checkprefix(TFTP_OPTION_TSIZE, option)) {
       curl_off_t tsize = 0;
       /* tsize should be ignored on upload: Who cares about the size of the
          remote file? */
@@ -491,7 +486,7 @@ static CURLcode tftp_tx(struct tftp_conn *state, tftp_event_t event)
     break;
 
   default:
-    failf(data, "tftp_tx: internal error, event: %d", (int)event);
+    failf(data, "tftp_tx: internal error, event: %i", (int)event);
     break;
   }
 
@@ -676,7 +671,7 @@ static CURLcode tftp_send_first(struct tftp_conn *state,
     }
 
     if(data->state.upload) {
-      /* If we are uploading, send a WRQ */
+      /* If we are uploading, send an WRQ */
       setpacketevent(&state->spacket, TFTP_EVENT_WRQ);
       if(data->state.infilesize != -1)
         Curl_pgrsSetUploadSize(data, data->state.infilesize);
@@ -741,7 +736,7 @@ static CURLcode tftp_send_first(struct tftp_conn *state,
       }
     }
 
-    /* the typecast for the 3rd argument is mostly for systems that do
+    /* the typecase for the 3rd argument is mostly for systems that do
        not have a size_t argument, like older unixes that want an 'int' */
 #ifdef __AMIGA__
 #define CURL_SENDTO_ARG5(x) CURL_UNCONST(x)
@@ -874,7 +869,7 @@ static CURLcode tftp_state_machine(struct tftp_conn *state,
     infof(data, "%s", "TFTP finished");
     break;
   default:
-    DEBUGF(infof(data, "STATE: %d", (int)state->state));
+    DEBUGF(infof(data, "STATE: %d", state->state));
     failf(data, "%s", "Internal state machine error");
     result = CURLE_TFTP_ILLEGAL;
     break;
@@ -1197,9 +1192,9 @@ static CURLcode tftp_multi_statemach(struct Curl_easy *data, bool *done)
 
     if(rc == -1) {
       /* bail out */
-      int sockerr = SOCKERRNO;
+      int error = SOCKERRNO;
       char buffer[STRERROR_LEN];
-      failf(data, "%s", curlx_strerror(sockerr, buffer, sizeof(buffer)));
+      failf(data, "%s", curlx_strerror(error, buffer, sizeof(buffer)));
       state->event = TFTP_EVENT_ERROR;
     }
     else if(rc) {

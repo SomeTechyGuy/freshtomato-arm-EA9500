@@ -4,32 +4,27 @@
 #
 # Translators:
 # Jiří Vírava <appukonrad@gmail.com>, 2012
-# Marek Černocký <marek@manet.cz>, 2018.
-# Daniel Rusek <mail@asciiwolf.com>, 2025, 2026.
-# Pavel Borecki <pavel.borecki@gmail.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Avahi\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-10-10 13:24+0200\n"
-"PO-Revision-Date: 2026-02-25 08:46+0000\n"
-"Last-Translator: Pavel Borecki <pavel.borecki@gmail.com>\n"
-"Language-Team: Czech <https://translate.fedoraproject.org/projects/avahi/"
-"master/cs/>\n"
+"PO-Revision-Date: 2013-11-20 09:58+0000\n"
+"Last-Translator: Jiří Vírava <appukonrad@gmail.com>\n"
+"Language-Team: Czech (http://www.transifex.com/lennart/avahi/language/cs/)\n"
 "Language: cs\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Generator: Weblate 5.16\n"
 
 #: ../avahi-common/error.c:30
 msgid "OK"
-msgstr "OK"
+msgstr "Budiž"
 
 #: ../avahi-common/error.c:31
 msgid "Operation failed"
-msgstr "Operace se nezdařila"
+msgstr "Operace selhala"
 
 #: ../avahi-common/error.c:32
 msgid "Bad state"
@@ -37,7 +32,7 @@ msgstr "Nevyhovující stav"
 
 #: ../avahi-common/error.c:33
 msgid "Invalid host name"
-msgstr "Neplatný název hostitele"
+msgstr "Neplatný název počítače"
 
 #: ../avahi-common/error.c:34
 msgid "Invalid domain name"
@@ -45,7 +40,7 @@ msgstr "Neplatný název domény"
 
 #: ../avahi-common/error.c:35
 msgid "No suitable network protocol available"
-msgstr "Není dostupný žádný vyhovující síťový protokol"
+msgstr "Žádný vyhovující síťový protokol není dostupný"
 
 #: ../avahi-common/error.c:36
 msgid "Invalid DNS TTL"
@@ -53,11 +48,11 @@ msgstr "Neplatné DNS TTL"
 
 #: ../avahi-common/error.c:37
 msgid "Resource record key is pattern"
-msgstr "Klíč záznamu je obecný vzor"
+msgstr ""
 
 #: ../avahi-common/error.c:38
 msgid "Local name collision"
-msgstr "Kolize místního názvu"
+msgstr "Kolize lokálního jména"
 
 #: ../avahi-common/error.c:39
 msgid "Invalid record"
@@ -101,11 +96,11 @@ msgstr "Příliš mnoho položek"
 
 #: ../avahi-common/error.c:50
 msgid "OS Error"
-msgstr "Chyba OS"
+msgstr "Chyba OS "
 
 #: ../avahi-common/error.c:52
 msgid "Access denied"
-msgstr "Přístup byl odepřen"
+msgstr "Přístup zamítnut"
 
 #: ../avahi-common/error.c:53
 msgid "Invalid operation"
@@ -113,15 +108,15 @@ msgstr "Neplatná operace"
 
 #: ../avahi-common/error.c:54
 msgid "An unexpected D-Bus error occurred"
-msgstr "Vyskytla se neočekávaná chyba sběrnice D-Bus"
+msgstr "Neočekávaná chyba D-Bus"
 
 #: ../avahi-common/error.c:55
 msgid "Daemon connection failed"
-msgstr "Připojení k procesu služby se nezdařilo"
+msgstr "Připojení démona selhalo"
 
 #: ../avahi-common/error.c:56
 msgid "Memory exhausted"
-msgstr "Nedostatek paměti"
+msgstr "Paměť vyčerpána"
 
 #: ../avahi-common/error.c:57
 msgid "The object passed in was not valid"
@@ -129,7 +124,7 @@ msgstr "Předaný objekt nebyl platný"
 
 #: ../avahi-common/error.c:58
 msgid "Daemon not running"
-msgstr "Proces služby není spuštěný"
+msgstr "Démon neběží"
 
 #: ../avahi-common/error.c:59
 msgid "Invalid interface index"
@@ -141,7 +136,7 @@ msgstr "Neplatná specifikace protokolu"
 
 #: ../avahi-common/error.c:61
 msgid "Invalid flags"
-msgstr "Neplatné příznaky"
+msgstr "Neplatné vlajky"
 
 #: ../avahi-common/error.c:63
 msgid "Not found"
@@ -149,11 +144,11 @@ msgstr "Nebylo nalezeno"
 
 #: ../avahi-common/error.c:64
 msgid "Invalid configuration"
-msgstr "Neplatné nastavení"
+msgstr "Neplatná konfigurace"
 
 #: ../avahi-common/error.c:65
 msgid "Version mismatch"
-msgstr "Nesouhlasí verze"
+msgstr "Neshoda verzí"
 
 #: ../avahi-common/error.c:66
 msgid "Invalid service subtype"
@@ -237,7 +232,7 @@ msgstr "Je prázdné"
 
 #: ../avahi-common/error.c:88
 msgid "The requested operation is invalid because redundant"
-msgstr "Požadovaná operace je neplatná, protože je nadbytečná"
+msgstr "Požadovaná operace je neplatná, protože nadbytečná"
 
 #: ../avahi-common/error.c:94
 msgid "Invalid Error Code"
@@ -245,20 +240,20 @@ msgstr "Neplatný kód chyby"
 
 #: ../avahi-discover-standalone/avahi-discover.ui.h:1
 msgid "Avahi Discovery"
-msgstr "Objevování pomocí Avahi"
+msgstr "Zjišťování přes Avahi"
 
 #: ../avahi-discover-standalone/avahi-discover.ui.h:2
 #: ../avahi-python/avahi-discover/avahi-discover.py:76
 msgid "<i>No service currently selected.</i>"
-msgstr "<i>Aktuálně není vybraná žádná služba.</i>"
+msgstr "<i>Žádná služba není aktuálně vybrána.</i>"
 
 #: ../avahi-python/avahi-discover/avahi-discover.desktop.in.in.h:1
 msgid "Avahi Zeroconf Browser"
-msgstr "Procházení pomocí Avahi"
+msgstr "Avahi Zeroconf Prohlížeč"
 
 #: ../avahi-python/avahi-discover/avahi-discover.desktop.in.in.h:2
 msgid "Browse for Zeroconf services available on your network"
-msgstr "Procházejte si služby dostupné na síti, bez nutnosti něco nastavovat"
+msgstr "Procházet Zeroconf služeby dostupné na síti"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:224
 msgid "TXT"
@@ -266,7 +261,7 @@ msgstr "TXT"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:226
 msgid "TXT Data:"
-msgstr "Data TXT:"
+msgstr "TXT Data:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:226
 msgid "empty"
@@ -278,11 +273,11 @@ msgstr "Typ služby:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:229
 msgid "Service Name:"
-msgstr "Název služby:"
+msgstr "Jméno služby:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:230
 msgid "Domain Name:"
-msgstr "Název domény:"
+msgstr "Jméno domény:"
 
 #: ../avahi-python/avahi-discover/avahi-discover.py:231
 msgid "Interface:"
@@ -294,11 +289,11 @@ msgstr "Adresa:"
 
 #: ../avahi-ui/avahi-ui.c:185
 msgid "Browse Service Types"
-msgstr "Hledané typy služeb"
+msgstr "Procházet typy služeb"
 
 #: ../avahi-ui/avahi-ui.c:185
 msgid "A NULL terminated list of service types to browse for"
-msgstr "Znakem NULL zakončený seznam typů služeb, které se mají vyhledat"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:190
 msgid "Domain"
@@ -306,7 +301,7 @@ msgstr "Doména"
 
 #: ../avahi-ui/avahi-ui.c:190
 msgid "The domain to browse in, or NULL for the default domain"
-msgstr "Doména, ve které se má hledat, nebo NULL pro výchozí doménu"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:196
 msgid "Service Type"
@@ -314,15 +309,15 @@ msgstr "Typ služby"
 
 #: ../avahi-ui/avahi-ui.c:196
 msgid "The service type of the selected service"
-msgstr "Typ služby, která je vybraná"
+msgstr "Typ služby vybrané službě"
 
 #: ../avahi-ui/avahi-ui.c:202 ../avahi-ui/avahi-ui.c:1035
 msgid "Service Name"
-msgstr "Název služby"
+msgstr "Jméno služby"
 
 #: ../avahi-ui/avahi-ui.c:202
 msgid "The service name of the selected service"
-msgstr "Název služby, která je vybraná"
+msgstr "Jméno služby vybrané služby"
 
 #: ../avahi-ui/avahi-ui.c:208
 msgid "Address"
@@ -330,7 +325,7 @@ msgstr "Adresa"
 
 #: ../avahi-ui/avahi-ui.c:208
 msgid "The address of the resolved service"
-msgstr "Adresa vyhodnoceného překladu služby"
+msgstr "Adressa rozpoznané služby"
 
 #: ../avahi-ui/avahi-ui.c:213
 msgid "Port"
@@ -338,64 +333,63 @@ msgstr "Port"
 
 #: ../avahi-ui/avahi-ui.c:213
 msgid "The IP port number of the resolved service"
-msgstr "Číslo portu IP vyhodnoceného překladu služby"
+msgstr "Číslo IP portu rozpoznané služby"
 
 #: ../avahi-ui/avahi-ui.c:219
 msgid "Host Name"
-msgstr "Název hostitele"
+msgstr "Jméno hostitele"
 
 #: ../avahi-ui/avahi-ui.c:219
 msgid "The host name of the resolved service"
-msgstr "Název hostitele vyhodnoceného překladu služby"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:225
 msgid "TXT Data"
-msgstr "Data TXT"
+msgstr "TXT Data"
 
 #: ../avahi-ui/avahi-ui.c:225
 msgid "The TXT data of the resolved service"
-msgstr "Data TXT vyhodnoceného překladu služby"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:230
 msgid "Resolve Service"
-msgstr "Přeložit službu"
+msgstr "Rozpoznat službu"
 
 #: ../avahi-ui/avahi-ui.c:230
 msgid "Resolve the selected service automatically before returning"
-msgstr "Pře návratem automaticky vyhodnotit překlad vybrané služby"
+msgstr "Automaticky před návratem rozpoznat vybranou službu"
 
 #: ../avahi-ui/avahi-ui.c:236
 msgid "Resolve Service Host Name"
-msgstr "Přeložit název hostitele služby"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:236
 msgid ""
 "Resolve the host name of the selected service automatically before returning"
 msgstr ""
-"Před návratem automaticky vyhodnotit překlad názvu hostitele vybrané služby"
 
 #: ../avahi-ui/avahi-ui.c:242
 msgid "Address family"
-msgstr "Rodina adresy"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:242
 msgid "The address family for host name resolution"
-msgstr "Rodina adresy pro překlad názvu hostitele"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:326
 #, c-format
 msgid "Avahi client failure: %s"
-msgstr "Selhání Avahi klienta: %s"
+msgstr "Avahi klient selhal: %s"
 
 #: ../avahi-ui/avahi-ui.c:388
 #, c-format
 msgid "Avahi resolver failure: %s"
-msgstr "Selhání Avahi překladače: %s"
+msgstr "Avahi rozpoznávač selahl: %s"
 
 #: ../avahi-ui/avahi-ui.c:518
 #, c-format
 msgid "Browsing for service type %s in domain %s failed: %s"
-msgstr "Vyhledávání služby typu %s v doméně %s se nezdařilo: %s"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:519 ../avahi-utils/avahi-browse.c:168
 #: ../avahi-utils/avahi-browse.c:169 ../avahi-utils/avahi-browse.c:178
@@ -406,25 +400,25 @@ msgstr "-"
 #: ../avahi-ui/avahi-ui.c:649
 #, c-format
 msgid "Avahi domain browser failure: %s"
-msgstr "Prohledávání domény přes Avahi se nezdařilo: %s"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:684
 #, c-format
 msgid "Failed to read Avahi domain: %s"
-msgstr "Nepodařilo se načíst doménu Avahi: %s"
+msgstr "Selhalo čtení Avahi domény: %s"
 
 #: ../avahi-ui/avahi-ui.c:706
 msgid "Browse service type list is empty!"
-msgstr "Seznam s hledanými typy služeb je prázdný!"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:717
 #, c-format
 msgid "Failed to connect to Avahi server: %s"
-msgstr "Nepodařilo se připojit k serveru Avahi: %s"
+msgstr "Selhalo připojení na Avahi server: %s"
 
 #: ../avahi-ui/avahi-ui.c:735
 msgid "Browsing for services on <b>local network</b>:"
-msgstr "Procházení služeb v <b>místní síti</b>:"
+msgstr "Procházení služeb na <b>místní síti</ b>:"
 
 #: ../avahi-ui/avahi-ui.c:737
 #, c-format
@@ -434,38 +428,40 @@ msgstr "Procházení služeb v doméně <b>%s</b>:"
 #: ../avahi-ui/avahi-ui.c:773
 #, c-format
 msgid "Failed to create browser for %s: %s"
-msgstr "Nepodařilo se vytvořit procházení pro %s: %s"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:907
 #, c-format
 msgid "Failed to create resolver for %s of type %s in domain %s: %s"
-msgstr "Nepodařilo se vytvořit překladač pro %s typu %s v doméně %s: %s"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:982
 #, c-format
 msgid "Failed to create domain browser: %s"
-msgstr "Nepodařilo se vytvořit prohledávání v doméně: %s"
+msgstr ""
 
 #: ../avahi-ui/avahi-ui.c:993
 msgid "Change domain"
-msgstr "Změna domény"
+msgstr "Změnit doménu"
 
 #: ../avahi-ui/avahi-ui.c:1043 ../avahi-ui/avahi-ui.c:1180
 msgid "Browsing..."
-msgstr "Procházení…"
+msgstr "Procházení..."
 
 #: ../avahi-ui/avahi-ui.c:1047 ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156
 #: ../avahi-ui/bssh.c:161
+#, fuzzy
 msgid "_Cancel"
-msgstr "_Zrušit"
+msgstr "Zrušeno.\n"
 
 #: ../avahi-ui/avahi-ui.c:1048
+#, fuzzy
 msgid "_OK"
-msgstr "_Budiž"
+msgstr "Budiž"
 
 #: ../avahi-ui/avahi-ui.c:1134
 msgid "Initializing..."
-msgstr "Inicializování…"
+msgstr "Inicializace..."
 
 #: ../avahi-ui/avahi-ui.c:1162
 msgid "Location"
@@ -473,7 +469,7 @@ msgstr "Umístění"
 
 #: ../avahi-ui/avahi-ui.c:1167 ../avahi-utils/avahi-browse.c:553
 msgid "Name"
-msgstr "Název"
+msgstr "Jméno"
 
 #: ../avahi-ui/avahi-ui.c:1172 ../avahi-utils/avahi-browse.c:553
 msgid "Type"
@@ -481,7 +477,7 @@ msgstr "Typ"
 
 #: ../avahi-ui/avahi-ui.c:1184
 msgid "_Domain..."
-msgstr "_Doména…"
+msgstr "_Doména..."
 
 #: ../avahi-ui/bssh.c:55
 #, c-format
@@ -494,13 +490,13 @@ msgid ""
 "    -S --shell           Browse both SSH and VNC\n"
 "    -d --domain=DOMAIN   The domain to browse in\n"
 msgstr ""
-"%s [VOLBY]\n"
+"%s [options]\n"
 "\n"
-"     -h --help           Zobrazit tuto nápovědu\n"
-"     -s --ssh            Vyhledat servery SSH\n"
-"     -v --vnc            Vyhledat servery VNC\n"
-"     -S --shell          Vyhledat servery SSH a VNC\n"
-"     -d --domain=DOMÉNA  Doména, která se má prohledávat\n"
+"     -h --help          Zobrazit tuto nápovědu\n"
+"     -s --ssh             Procházet SSH servery\n"
+"     -v --vnc            Procházet VNC servery\n"
+"     -S --shell          Procházet SSH a VNC servery\n"
+"     -d --domain=DOMAIN Zadání domény k procházení\n"
 
 #: ../avahi-ui/bssh.c:101 ../avahi-utils/avahi-browse.c:775
 #, c-format
@@ -509,15 +505,15 @@ msgstr "Příliš mnoho argumentů\n"
 
 #: ../avahi-ui/bssh.c:149
 msgid "Choose Shell Server"
-msgstr "Výběr serveru Shell"
+msgstr "Vyberte Shell Server"
 
 #: ../avahi-ui/bssh.c:149 ../avahi-ui/bssh.c:156 ../avahi-ui/bssh.c:161
 msgid "C_onnect"
-msgstr "Přip_ojit"
+msgstr ""
 
 #: ../avahi-ui/bssh.c:151
 msgid "Desktop"
-msgstr "Grafické prostředí"
+msgstr "Plocha"
 
 #: ../avahi-ui/bssh.c:152
 msgid "Terminal"
@@ -525,21 +521,21 @@ msgstr "Terminál"
 
 #: ../avahi-ui/bssh.c:156
 msgid "Choose VNC server"
-msgstr "Výběr serveru VNC"
+msgstr "Vyberte VNC server"
 
 #: ../avahi-ui/bssh.c:161
 msgid "Choose SSH server"
-msgstr "Výběr serveru SSH"
+msgstr "Vyberte SSH server"
 
 #: ../avahi-ui/bssh.c:185
 #, c-format
 msgid "Connecting to '%s' ...\n"
-msgstr "Připojování k „%s“…\n"
+msgstr "Připojování k '%s' ...\n"
 
 #: ../avahi-ui/bssh.c:240
 #, c-format
 msgid "execlp() failed: %s\n"
-msgstr "Nezdařilo se volání execlp(): %s\n"
+msgstr "execlp() selhalo: %s\n"
 
 #: ../avahi-ui/bssh.c:250
 #, c-format
@@ -548,116 +544,120 @@ msgstr "Zrušeno.\n"
 
 #: ../avahi-ui/bssh.desktop.in.in.h:1
 msgid "Avahi SSH Server Browser"
-msgstr "Vyhledávání SSH přes Avahi"
+msgstr ""
 
 #: ../avahi-ui/bssh.desktop.in.in.h:2
 msgid "Browse for Zeroconf-enabled SSH Servers"
-msgstr "Procházejte si servery SSH, bez nutnosti něco nastavovat"
+msgstr ""
 
 #: ../avahi-ui/bvnc.desktop.in.in.h:1
 msgid "Avahi VNC Server Browser"
-msgstr "Vyhledávání VNC přes Avahi"
+msgstr ""
 
 #: ../avahi-ui/bvnc.desktop.in.in.h:2
 msgid "Browse for Zeroconf-enabled VNC Servers"
-msgstr "Procházejte si servery VNC, bez nutnosti něco nastavovat"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:107
 #, c-format
 msgid ": All for now\n"
-msgstr ": Prozatím vše\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:118
 #, c-format
 msgid ": Cache exhausted\n"
-msgstr ": Mezipaměť vyčerpána\n"
+msgstr ""
+": Cache vyčerpána\n"
+"\n"
 
 #: ../avahi-utils/avahi-browse.c:239 ../avahi-utils/avahi-browse.c:261
 #, c-format
 msgid "Failed to resolve service '%s' of type '%s' in domain '%s': %s\n"
-msgstr "Nezdařil se překlad služby „%s“ typu „%s“ v doméně „%s“: %s\n"
+msgstr "Selhalo rozpoznání služby '%s' typu '%s' v doméně '%s': %s\n"
 
 #: ../avahi-utils/avahi-browse.c:340
 #, c-format
 msgid "service_browser failed: %s\n"
-msgstr "Nezdařilo se service_browser: %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:378
 #, c-format
 msgid "avahi_service_browser_new() failed: %s\n"
-msgstr "Nezdařilo se volání avahi_service_browser_new(): %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:414
 #, c-format
 msgid "service_type_browser failed: %s\n"
-msgstr "Nezdařilo se service_type_browser: %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:444
 #, c-format
 msgid "avahi_service_type_browser_new() failed: %s\n"
-msgstr "Nezdařilo se volání avahi_service_type_browser_new(): %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:519
 #, c-format
 msgid "avahi_domain_browser_new() failed: %s\n"
-msgstr "Nezdařilo se volání avahi_domain_browser_new(): %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-browse.c:535 ../avahi-utils/avahi-publish.c:394
 #: ../avahi-utils/avahi-resolve.c:280 ../avahi-utils/avahi-set-host-name.c:168
 #, c-format
 msgid "Failed to query version string: %s\n"
-msgstr "Nezdařil se dotaz na řetězec s verzí: %s\n"
+msgstr "Nepodařil se dotaz na řetězec verze: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:540 ../avahi-utils/avahi-publish.c:399
 #: ../avahi-utils/avahi-resolve.c:285 ../avahi-utils/avahi-set-host-name.c:173
 #: ../avahi-utils/avahi-set-host-name.c:189
 #, c-format
 msgid "Failed to query host name: %s\n"
-msgstr "Nezdařil se dotaz na název hostitele: %s\n"
+msgstr "Nepodařil se dotaz na název hostitele: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:544 ../avahi-utils/avahi-publish.c:403
 #: ../avahi-utils/avahi-resolve.c:289 ../avahi-utils/avahi-set-host-name.c:177
 #, c-format
 msgid "Server version: %s; Host name: %s\n"
-msgstr "Verze serveru: %s; Název hostitele: %s\n"
+msgstr ""
+"Server verze: %s; Jméno hostitele: %s\n"
+"\n"
 
 #. Translators: This is a column heading with abbreviations for
 #. *   Event (+/-), Network Interface, Protocol (IPv4/v6), Domain
 #: ../avahi-utils/avahi-browse.c:549
 #, c-format
 msgid "E Ifce Prot Domain\n"
-msgstr "U Rozhraní Prot Doména\n"
+msgstr ""
 
 #. Translators: This is a column heading with abbreviations for
 #. *   Event (+/-), Network Interface, Protocol (IPv4/v6), Domain
 #: ../avahi-utils/avahi-browse.c:553
 #, c-format
 msgid "E Ifce Prot %-*s %-20s Domain\n"
-msgstr "U Rozhraní Prot %-*s %-20s Doména\n"
+msgstr ""
 
 #. We have been disconnected, so let reconnect
 #: ../avahi-utils/avahi-browse.c:585 ../avahi-utils/avahi-publish.c:163
 #, c-format
 msgid "Disconnected, reconnecting ...\n"
-msgstr "Odpojeno, znovu se připojuje…\n"
+msgstr "Odpojeno, připojuji znovu ...\n"
 
 #: ../avahi-utils/avahi-browse.c:599 ../avahi-utils/avahi-browse.c:829
 #: ../avahi-utils/avahi-publish.c:170 ../avahi-utils/avahi-publish.c:386
 #: ../avahi-utils/avahi-resolve.c:272 ../avahi-utils/avahi-set-host-name.c:160
 #, c-format
 msgid "Failed to create client object: %s\n"
-msgstr "Nepodařilo se vytvořit objekt klienta: %s\n"
+msgstr "Nepodařil se vytvořit objekt klienta: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:604 ../avahi-utils/avahi-publish.c:175
 #: ../avahi-utils/avahi-resolve.c:143 ../avahi-utils/avahi-set-host-name.c:59
 #, c-format
 msgid "Client failure, exiting: %s\n"
-msgstr "Selhání klienta, ukončuje se: %s\n"
+msgstr "Klient selhal, ukončení: %s\n"
 
 #: ../avahi-utils/avahi-browse.c:623 ../avahi-utils/avahi-publish.c:206
 #, c-format
 msgid "Waiting for daemon ...\n"
-msgstr "Čeká se na proces služby…\n"
+msgstr "Čekání na démona ...\n"
 
 #: ../avahi-utils/avahi-browse.c:647
 msgid ""
@@ -675,27 +675,27 @@ msgid ""
 "    -f --no-fail         Don't fail if the daemon is not available\n"
 "    -p --parsable        Output in parsable format\n"
 msgstr ""
-"    -h --help            Zobrazit tuto nápovědu\n"
-"    -V --version         Zobrazit verzi\n"
-"    -D --browse-domains  Místo služeb vyhledat prohledávané domény\n"
-"    -a --all             Zobrazit všechny služby, bez ohledu na typ\n"
-"    -d --domain=DOMÉNA   Doména, která se má prohledat\n"
-"    -v --verbose         Zapnout podrobný režim\n"
-"    -t --terminate       Ukončit po výpisu více či méně úplného seznamu\n"
-"    -c --cache           Ukončit po výpisu všech položek z mezipaměti\n"
-"    -l --ignore-local    Ignorovat místní služby\n"
-"    -r --resolve         Přeložit adresy nalezených služeb\n"
-"    -f --no-fail         Nebrat jako selhání, když není dostupný proces "
-"služby\n"
-"    -p --parsable        Výstup ve strojově zpracovatelném formátu\n"
+" -h --help              Zobrazit tuto nápovědu\n"
+" -V --version        Zobrazit verzi\n"
+" -D --browse-domains Procházet zadané domény místo služeb\n"
+" -a --all                   Zobrazit všechny služeby, bez ohledu na typ\n"
+" -d --domain=DOMAIN  Zadání domény k procházení\n"
+" -v --verbose        Povolit podrobný režim\n"
+" -t --terminate     Ukončit, až po dumpingu více či méně úplného seznamu\n"
+" -c --cache             Ukončit, až po výpisu všech položek z mezipaměti\n"
+" -l --ignore-local   Ignorovat místní služby\n"
+" -r --resolve           Rozlišovat nalezené služby\n"
+" -f --no-fail             Zamezit selhání v případě, že démon není k "
+"dispozici\n"
+" -p --parsable       Výstup v rozloženém formátu\n"
 
 #: ../avahi-utils/avahi-browse.c:660
 msgid ""
 "    -k --no-db-lookup    Don't lookup service types\n"
 "    -b --dump-db         Dump service type database\n"
 msgstr ""
-"    -k --no-db-lookup    Nezjišťovat typy služeb\n"
-"    -b --dump-db         Vypsat databázi typů služeb\n"
+"    -k --no-db-lookup   Nezjišťovat typ služby databáze\n"
+"    -b --dump-db            Vypsat typ služby databáze\n"
 
 #: ../avahi-utils/avahi-browse.c:766 ../avahi-utils/avahi-resolve.c:219
 #, c-format
@@ -706,27 +706,27 @@ msgstr "Příliš málo argumentů\n"
 #: ../avahi-utils/avahi-resolve.c:264 ../avahi-utils/avahi-set-host-name.c:152
 #, c-format
 msgid "Failed to create simple poll object.\n"
-msgstr "Nepodařilo se vytvořit jednoduchý dotazovací objekt.\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-publish.c:76
 #, c-format
 msgid "Established under name '%s'\n"
-msgstr "Zřízeno pod názvem „%s“\n"
+msgstr "Založeno pod jménem '%s'\n"
 
 #: ../avahi-utils/avahi-publish.c:81
 #, c-format
 msgid "Failed to register: %s\n"
-msgstr "Registrace se nezdařila: %s\n"
+msgstr "Nepodařilo se zaregistrovat: %s\n"
 
 #: ../avahi-utils/avahi-publish.c:94
 #, c-format
 msgid "Name collision, picking new name '%s'.\n"
-msgstr "Kolize názvů, bude zvolen nový název „%s“.\n"
+msgstr "Kolize jmen, vyberte nové jméno '%s'.\n"
 
 #: ../avahi-utils/avahi-publish.c:114
 #, c-format
 msgid "Failed to create entry group: %s\n"
-msgstr "Nepodařilo se vytvořit skupinu pro položky: %s\n"
+msgstr "Nepodařilo se vytvořit zadanou skupinu: %s\n"
 
 #: ../avahi-utils/avahi-publish.c:124
 #, c-format
@@ -741,12 +741,12 @@ msgstr "Nepodařilo se přidat službu: %s\n"
 #: ../avahi-utils/avahi-publish.c:140
 #, c-format
 msgid "Failed to add subtype '%s': %s\n"
-msgstr "Nepodařilo se přidat podtyp „%s“: %s\n"
+msgstr "Selhalo přidání podtypu '%s': %s\n"
 
 #: ../avahi-utils/avahi-publish.c:191
 #, c-format
 msgid "Host name conflict\n"
-msgstr "Konflikt názvu hostitele\n"
+msgstr "Konflikt jména hostitele\n"
 
 #: ../avahi-utils/avahi-publish.c:216
 #, c-format
@@ -766,25 +766,25 @@ msgid ""
 "    -R --no-reverse      Do not publish reverse entry with address\n"
 "    -f --no-fail         Don't fail if the daemon is not available\n"
 msgstr ""
-"%s [VOLBY] %s <NÁZEV> <TYP> <PORT> [<TXT…>]\n"
-"%s [VOLBY] %s <NÁZEV-HOSTITELE> <ADRESA>\n"
+"%s [options] %s <jméno> <typ> <port> [<txt ...>]\n"
+"%s [options] %s <jméno hostitele> <adresa>\n"
 "\n"
-"    -h --help            Zobrazit tuto nápovědu\n"
-"    -V --version         Zobrazit verzi\n"
-"    -s --service         Zveřejnit službu\n"
-"    -a --address         Zveřejnit adresu\n"
-"    -v --verbose         Zapnout podrobný režim\n"
-"    -d --domain=DOMÉNA   Doména, ve které se má služba zveřejnit\n"
-"    -H --host=DOMÉNA     Hostitel, na kterém služba sídlí\n"
-"       --subtype=PODTYP  Zaregistrovat další podtyp k této službě\n"
-"    -R --no-reverse      Nezveřejňovat reverzní záznam s adresou\n"
-"    -f --no-fail         Nebrat jako selhání, když není dostupný proces "
-"služby\n"
+"    -h --help                             Zobrazit tuto nápovědu\n"
+"    -V --version                       Zobrazit verzi\n"
+"    -s --service                         Zveřejnit službu\n"
+"    -a --address                       Zveřejnit adresu\n"
+"    -v --verbose                       Povolit podrobný režim\n"
+"    -d --domain=DOMAIN   Zveřejnit doménu ve službě\n"
+"    -H --host=DOMAIN         Umístění hostitele služby\n"
+"       --subtype=SUBTYPE    Zaregistrovat další podtyp na tuto službu\n"
+"    -R --no-reverse                 Nezveřejňovat reverzní záznam s adresou\n"
+"    -f --no-fail                           Nenechat selhat, pokud není démon "
+"dostupný\n"
 
 #: ../avahi-utils/avahi-publish.c:303 ../avahi-utils/avahi-publish.c:318
 #, c-format
 msgid "Bad number of arguments\n"
-msgstr "Nesprávný počet argumentů\n"
+msgstr "Špatný počet argumentů\n"
 
 #: ../avahi-utils/avahi-publish.c:329
 #, c-format
@@ -799,12 +799,12 @@ msgstr "Nebyl zadán žádný příkaz.\n"
 #: ../avahi-utils/avahi-resolve.c:89
 #, c-format
 msgid "Failed to resolve host name '%s': %s\n"
-msgstr "Nepodařilo se přeložit název hostitele „%s“: %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-resolve.c:126
 #, c-format
 msgid "Failed to resolve address '%s': %s\n"
-msgstr "Nezdařil se překlad adresy „%s“: %s\n"
+msgstr "Selhalo rozpoznání adresy '%s': %s\n"
 
 #: ../avahi-utils/avahi-resolve.c:157
 #, c-format
@@ -820,31 +820,21 @@ msgid ""
 "    -6                   Lookup IPv6 address\n"
 "    -4                   Lookup IPv4 address\n"
 msgstr ""
-"%s [VOLBY] %s <NÁZEV_HOSTITELE…>\n"
-"%s [VOLBY] %s <ADRESA…>\n"
-"\n"
-"    -h --help            Zobrazit tuto nápovědu\n"
-"    -V --version         Zobrazit verzi\n"
-"    -n --name            Přeložit název hostitele\n"
-"    -a --address         Přeložit adresu\n"
-"    -v --verbose         Zapnout podrobný režim\n"
-"    -6                   Hledat adresu IPv6\n"
-"    -4                   Hledat adresu IPv4\n"
 
 #: ../avahi-utils/avahi-resolve.c:299 ../avahi-utils/avahi-set-host-name.c:181
 #, c-format
 msgid "Failed to create host name resolver: %s\n"
-msgstr "Nepodařilo se vytvořit překladač pro názvy hostitelů: %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-resolve.c:309
 #, c-format
 msgid "Failed to parse address '%s'\n"
-msgstr "Nepodařilo se zpracovat adresu „%s“\n"
+msgstr "Nepodařilo se zpracovat adresu  '%s'\n"
 
 #: ../avahi-utils/avahi-resolve.c:314
 #, c-format
 msgid "Failed to create address resolver: %s\n"
-msgstr "Nepodařilo se vytvořit překladač pro adresu: %s\n"
+msgstr ""
 
 #: ../avahi-utils/avahi-set-host-name.c:73
 #, c-format
@@ -855,18 +845,18 @@ msgid ""
 "    -V --version         Show version\n"
 "    -v --verbose         Enable verbose mode\n"
 msgstr ""
-"%s [VOLBY] <NOVÝ_NÁZEV_HOSTITELE>\n"
+"%s [options] <Nový název hostitele>\n"
 "\n"
-"    -h --help            Zobrazit tuto nápovědu\n"
+"    -h --help               Zobratit tutu nápovědu\n"
 "    -V --version         Zobrazit verzi\n"
-"    -v --verbose         Zapnout podrobný režim\n"
+"    -v --verbose        Povolit podrobný režim\n"
 
 #: ../avahi-utils/avahi-set-host-name.c:114
 #, c-format
 msgid "Invalid number of arguments, expecting exactly one.\n"
-msgstr "Neplaný počet argumentů, očekáván je právě jeden.\n"
+msgstr "Chybný počet argumentů, očekáván přesně jeden.\n"
 
 #: ../avahi-utils/avahi-set-host-name.c:193
 #, c-format
 msgid "Host name successfully changed to %s\n"
-msgstr "Název hostitele byl úspěšně změněn na %s\n"
+msgstr "Název hostitele úspěšně změněn na %s\n"

@@ -969,8 +969,9 @@ static void reread_config_file(int sig UNUSED_PARAM)
 	servtab_t *sep, *cp, **sepp;
 	len_and_sockaddr *lsa;
 	sigset_t omask;
+	unsigned n;
+	uint16_t port;
 	int save_errno = errno;
-	char *p_etc_services = NULL;
 
 	if (!reopen_config_file())
 		goto ret;
@@ -1038,9 +1039,7 @@ static void reread_config_file(int sig UNUSED_PARAM)
 			break;
 
 		default: /* case AF_INET, case AF_INET6 */
-		{
-			unsigned portno;
-			portno = bb_strtou(sep->se_service, NULL, 10);
+			n = bb_strtou(sep->se_service, NULL, 10);
 #if ENABLE_FEATURE_INETD_RPC
 			if (is_rpc_service(sep)) {
 				sep->se_rpcprog = n;
@@ -1060,23 +1059,26 @@ static void reread_config_file(int sig UNUSED_PARAM)
 			}
 #endif
 			/* what port to listen on? */
-			if (errno || portno > 0xffff) { /* se_service is not numeric */
+			port = htons(n);
+			if (errno || n > 0xffff) { /* se_service is not numeric */
 				char protoname[4];
+				struct servent *sp;
 				/* can result only in "tcp" or "udp": */
 				safe_strncpy(protoname, sep->se_proto, 4);
-				portno = bb_get_servport_by_name(&p_etc_services, sep->se_service, protoname);
-				if (portno > 0xffff) {
+				sp = getservbyname(sep->se_service, protoname);
+				if (sp == NULL) {
 					bb_error_msg("%s/%s: unknown service",
 							sep->se_service, sep->se_proto);
 					goto next_cp;
 				}
+				port = sp->s_port;
 			}
 			if (LONE_CHAR(sep->se_local_hostname, '*')) {
 				lsa = xzalloc_lsa(sep->se_family);
-				set_nport(&lsa->u.sa, htons(portno));
+				set_nport(&lsa->u.sa, port);
 			} else {
 				lsa = host_and_af2sockaddr(sep->se_local_hostname,
-						portno, sep->se_family);
+						ntohs(port), sep->se_family);
 				if (!lsa) {
 					bb_error_msg("%s/%s: unknown host '%s'",
 						sep->se_service, sep->se_proto,
@@ -1085,7 +1087,6 @@ static void reread_config_file(int sig UNUSED_PARAM)
 				}
 			}
 			break;
-		}//default:
 		} /* end of "switch (sep->se_family)" */
 
 		/* did lsa change? Then close/open */
@@ -1133,7 +1134,6 @@ static void reread_config_file(int sig UNUSED_PARAM)
 	}
 	restore_sigmask(&omask);
  ret:
-	free(p_etc_services);
 	errno = save_errno;
 }
 

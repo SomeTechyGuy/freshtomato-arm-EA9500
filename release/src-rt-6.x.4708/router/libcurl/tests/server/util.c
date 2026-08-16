@@ -42,7 +42,7 @@ void loghex(const unsigned char *buffer, ssize_t len)
   ssize_t width = 0;
   int left = sizeof(data);
 
-  for(i = 0; i < len && (left > 2); i++) {
+  for(i = 0; i < len && (left >= 0); i++) {
     snprintf(optr, left, "%02x", ptr[i]);
     width += 2;
     optr += 2;
@@ -66,7 +66,7 @@ void logmsg(const char *msg, ...)
   static int    known_offset;
 
   if(!serverlogfile) {
-    fprintf(stderr, "Error: Server log file not set\n");
+    fprintf(stderr, "Serverlogfile not set error\n");
     return;
   }
 
@@ -139,7 +139,7 @@ int win32_init(void)
     if(err) {
       curlx_strerror(SOCKERRNO, buffer, sizeof(buffer));
       fprintf(stderr, "Winsock init failed: %s\n", buffer);
-      logmsg("Error initializing Winsock -- aborting");
+      logmsg("Error initialising Winsock -- aborting");
       return 1;
     }
 
@@ -230,6 +230,7 @@ void set_advisor_read_lock(const char *filename)
   FILE *lockfile;
   int error = 0;
   char errbuf[STRERROR_LEN];
+  int res;
 
   do {
     lockfile = curlx_fopen(filename, "wb");
@@ -241,7 +242,8 @@ void set_advisor_read_lock(const char *filename)
     return;
   }
 
-  if(curlx_fclose(lockfile))
+  res = curlx_fclose(lockfile);
+  if(res)
     logmsg("Error closing lock file %s error (%d) %s", filename,
            errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
 }
@@ -249,7 +251,7 @@ void set_advisor_read_lock(const char *filename)
 void clear_advisor_read_lock(const char *filename)
 {
   int error = 0;
-  int rc;
+  int res;
 
   /*
    * Log all removal failures. Even those due to file not existing.
@@ -258,68 +260,14 @@ void clear_advisor_read_lock(const char *filename)
    */
 
   do {
-    rc = unlink(filename);
+    res = unlink(filename);
     /* !checksrc! disable ERRNOVAR 1 */
-  } while(rc && ((error = errno) == EINTR));
-  if(rc) {
+  } while(res && ((error = errno) == EINTR));
+  if(res) {
     char errbuf[STRERROR_LEN];
     logmsg("Error removing lock file %s error (%d) %s", filename,
            error, curlx_strerror(error, errbuf, sizeof(errbuf)));
   }
-}
-
-/* store the entire request in a file */
-void storerequest(const char *reqbuf, size_t totalsize, const char *filename)
-{
-  int error = 0;
-  char errbuf[STRERROR_LEN];
-  size_t written;
-  size_t writeleft;
-  FILE *dump;
-  char dumpfile[256];
-
-  snprintf(dumpfile, sizeof(dumpfile), "%s/%s", logdir, filename);
-
-  if(!reqbuf)
-    return;
-  if(totalsize == 0)
-    return;
-
-  do {
-    dump = curlx_fopen(dumpfile, "ab");
-    /* !checksrc! disable ERRNOVAR 1 */
-  } while(!dump && ((error = errno) == EINTR));
-  if(!dump) {
-    logmsg("storerequest: Error opening file %s error (%d) %s", dumpfile,
-           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
-    return;
-  }
-
-  writeleft = totalsize;
-  do {
-    written = fwrite(&reqbuf[totalsize - writeleft], 1, writeleft, dump);
-    if(got_exit_signal)
-      goto storerequest_cleanup;
-    if(written > 0)
-      writeleft -= written;
-    error = errno;
-    /* !checksrc! disable ERRNOVAR 1 */
-  } while((writeleft > 0) && (error == EINTR));
-
-  if(writeleft == 0)
-    logmsg("Wrote request (%zu bytes) input to %s", totalsize, dumpfile);
-  else if(writeleft > 0) {
-    logmsg("Error writing file %s error (%d) %s", dumpfile,
-           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
-    logmsg("Wrote only (%zu bytes) of (%zu bytes) request input to %s",
-           totalsize - writeleft, totalsize, dumpfile);
-  }
-
-storerequest_cleanup:
-
-  if(curlx_fclose(dump))
-    logmsg("Error closing file %s error (%d) %s", dumpfile,
-           errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
 }
 
 /* vars used to keep around previous signal handlers */
@@ -363,29 +311,24 @@ static HANDLE thread_main_window = NULL;
 static HWND hidden_main_window = NULL;
 #endif
 
-/* signal handler that is triggered to indicate that the program
+/* signal handler that will be triggered to indicate that the program
  * should finish its execution in a controlled manner as soon as possible.
- * The first time this is called it sets got_exit_signal to 1 and
- * stores in exit_signal the signal that triggered its execution.
- *
+ * The first time this is called it will set got_exit_signal to one and
+ * store in exit_signal the signal that triggered its execution.
+ */
+/*
  * Only call signal-safe functions from the signal handler, as required by
  * the POSIX specification:
  *   https://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html
  * Hence, do not call 'logmsg()', and instead use 'open/write/close' to
  * log errors.
  */
-/* suppress warnings seen in configurations where 'write()' has the attribute
-   'warn_unused_result', which is not silenced by casting to '(void)'. */
-#if defined(CURL_HAVE_DIAG) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result" /* GCC 4.5+ */
-#endif
 static void exit_signal_handler(int signum)
 {
   int old_errno = errno;
   if(!serverlogfile) {
     static const char msg[] = "exit_signal_handler: serverlogfile not set\n";
-    (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
+    (void)!write(STDERR_FILENO, msg, sizeof(msg) - 1);
   }
   else {
     int fd = -1;
@@ -399,14 +342,14 @@ static void exit_signal_handler(int signum)
     if(fd != -1) {
 #endif
       static const char msg[] = "exit_signal_handler: called\n";
-      (void)write(fd, msg, sizeof(msg) - 1);
+      (void)!write(fd, msg, sizeof(msg) - 1);
       curlx_close(fd);
     }
     else {
       static const char msg[] = "exit_signal_handler: failed opening ";
-      (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
-      (void)write(STDERR_FILENO, serverlogfile, strlen(serverlogfile));
-      (void)write(STDERR_FILENO, "\n", 1);
+      (void)!write(STDERR_FILENO, msg, sizeof(msg) - 1);
+      (void)!write(STDERR_FILENO, serverlogfile, strlen(serverlogfile));
+      (void)!write(STDERR_FILENO, "\n", 1);
     }
   }
   if(got_exit_signal == 0) {
@@ -420,9 +363,6 @@ static void exit_signal_handler(int signum)
   (void)signal(signum, exit_signal_handler);
   errno = old_errno;
 }
-#if defined(CURL_HAVE_DIAG) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 #ifdef _WIN32
 /* CTRL event handler for Windows Console applications to simulate
@@ -716,6 +656,7 @@ void restore_signal_handlers(bool keep_sigalrm)
 int bind_unix_socket(curl_socket_t sock, const char *unix_socket,
                      struct sockaddr_un *sau)
 {
+  int error;
   char errbuf[STRERROR_LEN];
   int rc;
   size_t len;
@@ -736,45 +677,47 @@ int bind_unix_socket(curl_socket_t sock, const char *unix_socket,
   curlx_strcopy(sau->sun_path, sizeof(sau->sun_path), unix_socket, len);
   rc = bind(sock, (struct sockaddr *)sau, sizeof(struct sockaddr_un));
   if(rc && SOCKERRNO == SOCKEADDRINUSE) {
-    int sockerr;
+    curlx_struct_stat statbuf;
     /* socket already exists. Perhaps it is stale? */
     curl_socket_t unixfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if(unixfd == CURL_SOCKET_BAD) {
-      sockerr = SOCKERRNO;
       logmsg("Failed to create socket at %s (%d) %s", unix_socket,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             SOCKERRNO, curlx_strerror(SOCKERRNO, errbuf, sizeof(errbuf)));
       return -1;
     }
     /* check whether the server is alive */
     rc = connect(unixfd, (struct sockaddr*)sau, sizeof(struct sockaddr_un));
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
     sclose(unixfd);
-    if(rc && sockerr != SOCKECONNREFUSED) {
+    if(rc && error != SOCKECONNREFUSED) {
       logmsg("Failed to connect to %s (%d) %s", unix_socket,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       return rc;
     }
-#if !defined(_WIN32) && defined(S_IFSOCK) /* No lstat(), S_IFSOCK on Windows */
     /* socket server is not alive, now check if it was actually a socket. */
-    {
-      curlx_struct_stat statbuf;
-      rc = lstat(unix_socket, &statbuf);
-      if(rc && errno != ENOENT) {
-        logmsg("Error binding socket, failed to stat %s (%d) %s", unix_socket,
-               errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
-        return -1;
-      }
-      if(!rc && (statbuf.st_mode & S_IFMT) != S_IFSOCK) {
-        logmsg("Error binding socket, %s is not a socket", unix_socket);
-        return -1;
-      }
+#ifdef _WIN32
+    /* Windows does not have lstat function. */
+    rc = curlx_stat(unix_socket, &statbuf);
+#else
+    rc = lstat(unix_socket, &statbuf);
+#endif
+    if(rc) {
+      logmsg("Error binding socket, failed to stat %s (%d) %s", unix_socket,
+             errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
+      return rc;
+    }
+#ifdef S_IFSOCK
+    if((statbuf.st_mode & S_IFSOCK) != S_IFSOCK) {
+      logmsg("Error binding socket, failed to stat %s", unix_socket);
+      return -1;
     }
 #endif
     /* dead socket, cleanup and retry bind */
-    if(unlink(unix_socket) && errno != ENOENT) {
-      logmsg("Error binding socket, failed to unlink %s: %d (%s)", unix_socket,
+    rc = unlink(unix_socket);
+    if(rc) {
+      logmsg("Error binding socket, failed to unlink %s (%d) %s", unix_socket,
              errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
-      return -1;
+      return rc;
     }
     /* stale socket is gone, retry bind */
     rc = bind(sock, (struct sockaddr *)sau, sizeof(struct sockaddr_un));
@@ -796,7 +739,7 @@ curl_socket_t sockdaemon(curl_socket_t sock,
   int maxretr = 10;
   int delay = 20;
   int attempt = 0;
-  int sockerr = 0;
+  int error = 0;
   char errbuf[STRERROR_LEN];
 
 #ifndef USE_UNIX_SOCKETS
@@ -812,15 +755,16 @@ curl_socket_t sockdaemon(curl_socket_t sock,
       rc = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
                       (void *)&flag, sizeof(flag));
       if(rc) {
-        sockerr = SOCKERRNO;
+        error = SOCKERRNO;
         logmsg("setsockopt(SO_REUSEADDR) failed with error (%d) %s",
-               sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+               error, curlx_strerror(error, errbuf, sizeof(errbuf)));
         if(maxretr) {
-          if(curlx_wait_ms(delay)) {
+          rc = curlx_wait_ms(delay);
+          if(rc) {
             /* should not happen */
-            sockerr = SOCKERRNO;
+            error = SOCKERRNO;
             logmsg("curlx_wait_ms() failed with error (%d) %s",
-                   sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+                   error, curlx_strerror(error, errbuf, sizeof(errbuf)));
             sclose(sock);
             return CURL_SOCKET_BAD;
           }
@@ -838,7 +782,7 @@ curl_socket_t sockdaemon(curl_socket_t sock,
     if(rc) {
       logmsg("setsockopt(SO_REUSEADDR) failed %d times in %d ms. "
              "Error (%d) %s", attempt, totdelay,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       logmsg("Continuing anyway...");
     }
 #if defined(_WIN32) && defined(USE_UNIX_SOCKETS)
@@ -875,15 +819,15 @@ curl_socket_t sockdaemon(curl_socket_t sock,
   }
 
   if(rc) {
-    sockerr = SOCKERRNO;
+    error = SOCKERRNO;
 #ifdef USE_UNIX_SOCKETS
     if(socket_domain == AF_UNIX)
       logmsg("Error binding socket on path %s (%d) %s", unix_socket,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     else
 #endif
       logmsg("Error binding socket on port %hu (%d) %s", *listenport,
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(sock);
     return CURL_SOCKET_BAD;
   }
@@ -905,9 +849,9 @@ curl_socket_t sockdaemon(curl_socket_t sock,
 #endif
       la_size = sizeof(localaddr.sa4);
     if(getsockname(sock, &localaddr.sa, &la_size) < 0) {
-      sockerr = SOCKERRNO;
+      error = SOCKERRNO;
       logmsg("getsockname() failed with error (%d) %s",
-             sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+             error, curlx_strerror(error, errbuf, sizeof(errbuf)));
       sclose(sock);
       return CURL_SOCKET_BAD;
     }
@@ -941,10 +885,11 @@ curl_socket_t sockdaemon(curl_socket_t sock,
   }
 
   /* start accepting connections */
-  if(listen(sock, 5)) {
-    sockerr = SOCKERRNO;
+  rc = listen(sock, 5);
+  if(rc) {
+    error = SOCKERRNO;
     logmsg("listen(%ld, 5) failed with error (%d) %s", (long)sock,
-           sockerr, curlx_strerror(sockerr, errbuf, sizeof(errbuf)));
+           error, curlx_strerror(error, errbuf, sizeof(errbuf)));
     sclose(sock);
     return CURL_SOCKET_BAD;
   }

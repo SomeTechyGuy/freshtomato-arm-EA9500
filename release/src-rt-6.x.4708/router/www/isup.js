@@ -19,13 +19,8 @@ function show() {
 
 	var fom = E('t_fom');
 	if (up && changed) /* up and config changed? force restart on save */
-		fom._service.value = (
-/* PPTPD-BEGIN */
-		                      serviceType == 'pptpd' ? 'firewall-restart,'+serviceType+'-restart,dnsmasq-restart' :
-/* PPTPD-END */
-/* FTP-BEGIN */
+		fom._service.value = (serviceType == 'pptpd' ? 'firewall-restart,'+serviceType+'-restart,dnsmasq-restart' :
 		                      serviceType == 'ftpd' ? 'firewall-restart,'+serviceType+'-restart' :
-/* FTP-END */
 		                      serviceType+'-restart');
 	else
 		fom._service.value = '';
@@ -35,9 +30,7 @@ function toggle(service, isup) {
 	if (typeof save_pre === 'function') { if (!save_pre()) return; }
 	if (typeof reinit === 'undefined') reinit = 0;
 	if (changed && !reinit) alert('Configuration changes detected - will be saved');
-/* FTP-BEGIN */
 	else if (service == 'ftpd' && !isup && E('_ftp_enable').value == 0) alert('Ftpd will be started on LAN only');
-/* FTP-END */
 
 	E('_'+service+'_button').disabled = 1;
 	if (E('_'+service+'_interface')) E('_'+service+'_interface').disabled = 1;
@@ -48,13 +41,8 @@ function toggle(service, isup) {
 	countButton = 0;
 
 	var fom = E('t_fom');
-	fom._service.value = (
-/* PPTPD-BEGIN */
-	                      service == 'pptpd' ? 'firewall-restart,'+service+(isup ? '-stop' : '-start')+',dnsmasq-restart' :
-/* PPTPD-END */
-/* FTP-BEGIN */
+	fom._service.value = (service == 'pptpd' ? 'firewall-restart,'+service+(isup ? '-stop' : '-start')+',dnsmasq-restart' :
 	                      service == 'ftpd' ? 'firewall-restart,'+service+(isup ? '-stop' : '-start') :
-/* FTP-END */
 	                      service+(isup ? '-stop' : '-start'));
 
 	save(1);

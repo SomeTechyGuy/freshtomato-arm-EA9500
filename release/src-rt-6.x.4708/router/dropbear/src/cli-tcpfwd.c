@@ -24,7 +24,7 @@
 
 #include "includes.h"
 #include "dbutil.h"
-#include "forward.h"
+#include "tcpfwd.h"
 #include "channel.h"
 #include "runopts.h"
 #include "session.h"
@@ -107,13 +107,13 @@ static int cli_localtcp(const char* listenaddr,
 		const char* remoteaddr,
 		unsigned int remoteport) {
 
-	struct FwdListener* tcpinfo = NULL;
+	struct TCPListener* tcpinfo = NULL;
 	int ret;
 
 	TRACE(("enter cli_localtcp: %d %s %d", listenport, remoteaddr,
 				remoteport));
 
-	tcpinfo = (struct FwdListener*)m_malloc(sizeof(struct FwdListener));
+	tcpinfo = (struct TCPListener*)m_malloc(sizeof(struct TCPListener));
 
 	tcpinfo->sendaddr = m_strdup(remoteaddr);
 	tcpinfo->sendport = remoteport;
@@ -133,7 +133,7 @@ static int cli_localtcp(const char* listenaddr,
 	tcpinfo->listenport = listenport;
 
 	tcpinfo->chantype = &cli_chan_tcplocal;
-	tcpinfo->fwd_type = direct;
+	tcpinfo->tcp_type = direct;
 
 	ret = listen_tcpfwd(tcpinfo, NULL);
 
@@ -266,7 +266,7 @@ static int newtcpforwarded(struct Channel * channel) {
 
 	if (iter == NULL || fwd == NULL) {
 		/* We didn't request forwarding on that port */
-		cleantext(origaddr, 0);
+		cleantext(origaddr);
 		dropbear_log(LOG_INFO, "Server sent unrequested forward from \"%s:%d\"", 
                 origaddr, origport);
 		goto out;

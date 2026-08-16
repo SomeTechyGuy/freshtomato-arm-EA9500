@@ -21,13 +21,18 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+
 #include "first.h"
 
 #ifdef USE_OPENSSL
+
+#include <stdio.h>
+#include <curl/curl.h>
+#include <openssl/ssl.h>
 #include <vtls/openssl.h>
 
 #ifdef HAVE_BORINGSSL_LIKE
-/* AWS-LC and BoringSSL */
+/* BoringSSL and AWS-LC */
 typedef uint32_t opt1587;
 #else
 typedef uint64_t opt1587;

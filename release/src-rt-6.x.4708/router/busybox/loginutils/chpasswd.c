@@ -17,7 +17,7 @@
 //config:	default "des"
 //config:	depends on PASSWD || CRYPTPW || CHPASSWD
 //config:	help
-//config:	Possible choices: "d[es]", "m[d5]", "s[ha256]", "sha512", "yescrypt"
+//config:	Possible choices are "d[es]", "m[d5]", "s[ha256]" or "sha512".
 
 //applet:IF_CHPASSWD(APPLET(chpasswd, BB_DIR_USR_SBIN, BB_SUID_DROP))
 

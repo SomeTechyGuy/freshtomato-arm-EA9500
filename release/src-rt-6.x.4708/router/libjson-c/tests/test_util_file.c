@@ -27,9 +27,7 @@
 static void test_read_valid_with_fd(const char *testdir);
 static void test_read_valid_nested_with_fd(const char *testdir);
 static void test_read_nonexistant(void);
-#ifndef _WIN32
 static void test_read_closed(void);
-#endif
 
 static void test_write_to_file(void);
 static void stat_and_cat(const char *file);
@@ -94,12 +92,7 @@ static void test_write_to_file(void)
 static void stat_and_cat(const char *file)
 {
 	struct stat sb;
-	int flags = O_RDONLY;
-#ifdef O_BINARY
-	// This fixes Windows which otherwise opens this in text mode and returns different counts
-	flags |= O_BINARY;
-#endif
-	int d = open(file, flags);
+	int d = open(file, O_RDONLY);
 	if (d < 0)
 	{
 		printf("FAIL: unable to open %s: %s\n", file, strerror(errno));
@@ -166,10 +159,7 @@ int main(int argc, char **argv)
 	test_read_valid_with_fd(testdir);
 	test_read_valid_nested_with_fd(testdir);
 	test_read_nonexistant();
-	#ifndef _WIN32
-	// Disabled because the Windows CRT causes a crash during this test that cannot be disabled/stopped/worked around
 	test_read_closed();
-	#endif
 	test_write_to_file();
 	test_read_fd_equal(testdir);
 	return EXIT_SUCCESS;
@@ -179,12 +169,8 @@ static void test_read_valid_with_fd(const char *testdir)
 {
 	char filename[PATH_MAX];
 	(void)snprintf(filename, sizeof(filename), "%s/valid.json", testdir);
-	int flags = O_RDONLY;
-#ifdef O_BINARY
-	// This fixes Windows which otherwise opens this in text mode and returns different counts
-	flags |= O_BINARY;
-#endif
-	int d = open(filename, flags);
+
+	int d = open(filename, O_RDONLY);
 	if (d < 0)
 	{
 		fprintf(stderr, "FAIL: unable to open %s: %s\n", filename, strerror(errno));
@@ -208,12 +194,8 @@ static void test_read_valid_nested_with_fd(const char *testdir)
 {
 	char filename[PATH_MAX];
 	(void)snprintf(filename, sizeof(filename), "%s/valid_nested.json", testdir);
-	int flags = O_RDONLY;
-#ifdef O_BINARY
-	// This fixes Windows which otherwise opens this in text mode and returns different counts
-	flags |= O_BINARY;
-#endif
-	int d = open(filename, flags);
+
+	int d = open(filename, O_RDONLY);
 	if (d < 0)
 	{
 		fprintf(stderr, "FAIL: unable to open %s: %s\n", filename, strerror(errno));
@@ -268,7 +250,7 @@ static void test_read_nonexistant(void)
 		       json_util_get_last_err());
 	}
 }
-#ifndef _WIN32
+
 static void test_read_closed(void)
 {
 	// Test reading from a closed fd
@@ -276,7 +258,6 @@ static void test_read_closed(void)
 	if (d < 0)
 	{
 		puts("FAIL: unable to open");
-		return;
 	}
 	// Copy over to a fixed fd number so test output is consistent.
 	int fixed_d = 10;
@@ -300,7 +281,6 @@ static void test_read_closed(void)
 	       "expecting NULL, EBADF, got:NULL, %s\n",
 	       json_util_get_last_err());
 }
-#endif
 
 static void test_read_fd_equal(const char *testdir)
 {
@@ -308,12 +288,8 @@ static void test_read_fd_equal(const char *testdir)
 	(void)snprintf(filename, sizeof(filename), "%s/valid_nested.json", testdir);
 
 	json_object *jso = json_object_from_file(filename);
-	int flags = O_RDONLY;
-#ifdef O_BINARY
-	// This fixes Windows which otherwise opens this in text mode and returns different counts
-	flags |= O_BINARY;
-#endif
-	int d = open(filename, flags);
+
+	int d = open(filename, O_RDONLY);
 	if (d < 0)
 	{
 		fprintf(stderr, "FAIL: unable to open %s: %s\n", filename, strerror(errno));

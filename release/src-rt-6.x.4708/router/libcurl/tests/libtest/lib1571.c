@@ -40,23 +40,23 @@ static CURLcode test_lib1571(const char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
 
-  easy_setopt(curl, CURLOPT_HEADER, 1L);
-  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-  easy_setopt(curl, CURLOPT_URL, URL);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_URL, URL);
   if((testnum == 1571) || (testnum == 1572) ||
      (testnum == 1575) || (testnum == 1581)) {
-    easy_setopt(curl, CURLOPT_POSTFIELDS, "moo");
+    test_setopt(curl, CURLOPT_POSTFIELDS, "moo");
   }
   if(testnum == 1581) {
-    easy_setopt(curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_301);
+    test_setopt(curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_301);
   }
 
-  easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "IGLOO");
+  test_setopt(curl, CURLOPT_CUSTOMREQUEST, "IGLOO");
   if((testnum == 1574) || (testnum == 1575)) {
-    easy_setopt(curl, CURLOPT_FOLLOWLOCATION, CURLFOLLOW_FIRSTONLY);
+    test_setopt(curl, CURLOPT_FOLLOWLOCATION, CURLFOLLOW_FIRSTONLY);
   }
   else {
-    easy_setopt(curl, CURLOPT_FOLLOWLOCATION, CURLFOLLOW_OBEYCODE);
+    test_setopt(curl, CURLOPT_FOLLOWLOCATION, CURLFOLLOW_OBEYCODE);
   }
 
   result = curl_easy_perform(curl);

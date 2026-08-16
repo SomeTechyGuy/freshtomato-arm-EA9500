@@ -54,33 +54,12 @@ CURLcode Curl_input_digest(struct Curl_easy *data,
   }
 
   if(!checkprefix("Digest", header) || !ISBLANK(header[6]))
-    return CURLE_AUTH_ERROR;
+    return CURLE_BAD_CONTENT_ENCODING;
 
   header += strlen("Digest");
   curlx_str_passblanks(&header);
 
   return Curl_auth_decode_digest_http_message(header, digest);
-}
-
-/* Flush the Digest state if it was created for a different origin or with
-   different credentials than the ones now in use, then link the current
-   ones. */
-static void digest_flush_stale(struct digestdata *digest,
-                               struct Curl_peer *peer,
-                               struct Curl_creds *creds)
-{
-  bool flush = FALSE;
-  if(digest->origin && !Curl_peer_same_destination(peer, digest->origin))
-    flush = TRUE;
-  else if(digest->creds && !Curl_creds_same(creds, digest->creds))
-    flush = TRUE;
-
-  if(flush)
-    /* flush Digest state */
-    Curl_auth_digest_cleanup(digest);
-
-  Curl_peer_link(&digest->origin, peer);
-  Curl_creds_link(&digest->creds, creds);
 }
 
 CURLcode Curl_output_digest(struct Curl_easy *data,
@@ -89,6 +68,8 @@ CURLcode Curl_output_digest(struct Curl_easy *data,
                             const unsigned char *uripath)
 {
   CURLcode result;
+  unsigned char *path = NULL;
+  const char *tmp = NULL;
   char *response;
   size_t len;
   bool have_chlg;
@@ -98,7 +79,8 @@ CURLcode Curl_output_digest(struct Curl_easy *data,
   char **allocuserpwd;
 
   /* Point to the name and password for this */
-  struct Curl_creds *creds = NULL;
+  const char *userp;
+  const char *passwdp;
 
   /* Point to the correct struct with this */
   struct digestdata *digest;
@@ -109,23 +91,28 @@ CURLcode Curl_output_digest(struct Curl_easy *data,
     return CURLE_NOT_BUILT_IN;
 #else
     digest = &data->state.proxydigest;
-    digest_flush_stale(digest, data->conn->http_proxy.peer,
-                       data->conn->http_proxy.creds);
-    allocuserpwd = &data->req.hd_proxy_auth;
-    creds = data->conn->http_proxy.creds;
+    allocuserpwd = &data->req.proxyuserpwd;
+    userp = data->state.aptr.proxyuser;
+    passwdp = data->state.aptr.proxypasswd;
     authp = &data->state.authproxy;
 #endif
   }
   else {
-    DEBUGASSERT(data->state.origin);
     digest = &data->state.digest;
-    digest_flush_stale(digest, data->state.origin, data->state.creds);
-    allocuserpwd = &data->req.hd_auth;
-    creds = data->state.creds;
+    allocuserpwd = &data->req.userpwd;
+    userp = data->state.aptr.user;
+    passwdp = data->state.aptr.passwd;
     authp = &data->state.authhost;
   }
 
   curlx_safefree(*allocuserpwd);
+
+  /* not set means empty */
+  if(!userp)
+    userp = "";
+
+  if(!passwdp)
+    passwdp = "";
 
 #ifdef USE_WINDOWS_SSPI
   have_chlg = !!digest->input_token;
@@ -138,9 +125,36 @@ CURLcode Curl_output_digest(struct Curl_easy *data,
     return CURLE_OK;
   }
 
-  result = Curl_auth_create_digest_http_message(data, creds, request,
-                                                uripath, digest,
-                                                &response, &len);
+  /* IE browsers < v7 cut off the URI part at the query part when they
+     evaluate the MD5 and some (IIS?) servers work with them so we may need to
+     do the Digest IE-style. Note that the different ways cause different MD5
+     sums to get sent.
+
+     Apache servers can be set to do the Digest IE-style automatically using
+     the BrowserMatch feature:
+     https://httpd.apache.org/docs/2.2/mod/mod_auth_digest.html#msie
+
+     Further details on Digest implementation differences:
+     https://web.archive.org/web/2009/fngtps.com/2006/09/http-authentication
+  */
+
+  if(authp->iestyle) {
+    tmp = strchr((const char *)uripath, '?');
+    if(tmp) {
+      size_t urilen = tmp - (const char *)uripath;
+      /* typecast is fine here since the value is always less than 32 bits */
+      path = (unsigned char *)curl_maprintf("%.*s", (int)urilen, uripath);
+    }
+  }
+  if(!tmp)
+    path = (unsigned char *)curlx_strdup((const char *)uripath);
+
+  if(!path)
+    return CURLE_OUT_OF_MEMORY;
+
+  result = Curl_auth_create_digest_http_message(data, userp, passwdp, request,
+                                                path, digest, &response, &len);
+  curlx_free(path);
   if(result)
     return result;
 

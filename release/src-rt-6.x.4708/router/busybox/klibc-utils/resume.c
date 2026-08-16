@@ -31,7 +31,7 @@
  * - /dev/ram (alias to /dev/ram0)
  * - /dev/mtd
  */
-static dev_t name_to_dev_t(char *devname)
+static dev_t name_to_dev_t(const char *devname)
 {
 	char devfile[sizeof(int)*3 * 2 + 4];
 	char *sysname;
@@ -39,7 +39,7 @@ static dev_t name_to_dev_t(char *devname)
 	struct stat st;
 	int r;
 
-	if (!is_prefixed_with(devname, "/dev/")) {
+	if (strncmp(devname, "/dev/", 5) != 0) {
 		char *cptr;
 
 		cptr = strchr(devname, ':');
@@ -59,7 +59,7 @@ static dev_t name_to_dev_t(char *devname)
 				return res;
 		}
 
-		devname = concat_path_file("/dev", devname);
+		devname = xasprintf("/dev/%s", devname);
 	}
 	/* Now devname is always "/dev/FOO" */
 

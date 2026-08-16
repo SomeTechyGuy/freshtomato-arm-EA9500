@@ -64,7 +64,7 @@ int main(void)
   }
 
   /* to get the file size */
-  if(fstat(fileno(fd), &file_info)) {
+  if(fstat(fileno(fd), &file_info) != 0) {
     fclose(fd);
     curl_global_cleanup();
     return 1; /* cannot continue */

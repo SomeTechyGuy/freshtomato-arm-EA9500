@@ -556,33 +556,27 @@ static int verbose_mount(const char *source, const char *target,
 #endif
 
 // Append mount options to string
-// ("merge two comma-separated lists" is a good candidate for libbb!)
 static void append_mount_options(char **oldopts, const char *newopts)
 {
 	if (*oldopts && **oldopts) {
-//TODO: do this unconditionally?
-//this way, newopts of "opt1,opt2,opt1"
-//will be de-duped into "opt1,opt2" in _both_ cases
-//(whether or now old opts are empty)
-//the only modification needed is to not prepend extra comma
-//when old opts is "".
 		// Do not insert options which are already there
-		while (*newopts) {
+		while (newopts[0]) {
 			char *p;
 			int len;
 
-			//if (*newopts == ',') { newopts++; continue; }
 			len = strchrnul(newopts, ',') - newopts;
 			p = *oldopts;
 			while (1) {
-				if (strncmp(p, newopts, len) == 0
+				if (!strncmp(p, newopts, len)
 				 && (p[len] == ',' || p[len] == '\0'))
 					goto skip;
-				p = strchr(p, ',');
+				p = strchr(p,',');
 				if (!p) break;
 				p++;
 			}
-			xasprintf_inplace(*oldopts, "%s,%.*s", *oldopts, len, newopts);
+			p = xasprintf("%s,%.*s", *oldopts, len, newopts);
+			free(*oldopts);
+			*oldopts = p;
  skip:
 			newopts += len;
 			while (*newopts == ',') newopts++;
@@ -2071,11 +2065,12 @@ static int singlemount(struct mntent *mp, int ignore_busy)
 		if (!is_prefixed_with(filteropts, ",ip="+1)
 		 && !strstr(filteropts, ",ip=")
 		) {
-			char *ip;
+			char *dotted, *ip;
 			// Insert "ip=..." option into options
-			ip = xmalloc_sockaddr2dotted_noport(&lsa->u.sa);
+			dotted = xmalloc_sockaddr2dotted_noport(&lsa->u.sa);
 			if (ENABLE_FEATURE_CLEAN_UP) free(lsa);
-			xasprintf_inplace(ip, "ip=%s", ip);
+			ip = xasprintf("ip=%s", dotted);
+			if (ENABLE_FEATURE_CLEAN_UP) free(dotted);
 // Note: IPv6 scoped addresses ("host%iface", see RFC 4007) should be
 // handled by libc in getnameinfo() (inside xmalloc_sockaddr2dotted_noport()).
 // Currently, glibc does not support that (has no NI_NUMERICSCOPE),

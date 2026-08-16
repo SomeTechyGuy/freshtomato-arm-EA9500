@@ -36,20 +36,20 @@ while(@ARGV) {
     my $cmd = shift @ARGV;
     my $arg = shift @ARGV;
     if($cmd eq "mkdir") {
-        mkdir $arg or die "$!";
+        mkdir $arg || die "$!";
     }
     elsif($cmd eq "rmdir") {
-        rmdir $arg or die "$!";
+        rmdir $arg || die "$!";
     }
     elsif($cmd eq "rm") {
-        unlink $arg or die "$!";
+        unlink $arg || die "$!";
     }
     elsif($cmd eq "move") {
         my $arg2 = shift @ARGV;
-        move($arg,$arg2) or die "$!";
+        move($arg,$arg2) || die "$!";
     }
     elsif($cmd eq "gone") {
-        ! -e $arg or die "Path $arg exists";
+        ! -e $arg || die "Path $arg exists";
     } else {
         print "Unsupported command $cmd\n";
         exit 1;

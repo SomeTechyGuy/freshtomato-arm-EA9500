@@ -83,8 +83,7 @@ struct StaticServiceGroup {
 static AVAHI_LLIST_HEAD(StaticServiceGroup, groups) = NULL;
 
 static char *replacestr(const char *pattern, const char *a, const char *b) {
-    const char *e;
-    char *r = NULL, *n;
+    char *r = NULL, *e, *n;
 
     while ((e = strstr(pattern, a))) {
         char *k;
@@ -745,7 +744,7 @@ static void XMLCALL xml_cdata(void *data, const XML_Char *s, int len) {
         case XML_TAG_TXT_RECORD:
             assert(u->service);
             if (u->txt_key == NULL) {
-              const char *equals = memchr(s, '=', len);
+              char *equals = memchr(s, '=', len);
 
               if (equals != NULL) {
                 u->txt_key = append_cdata(u->buf, s, equals - s);

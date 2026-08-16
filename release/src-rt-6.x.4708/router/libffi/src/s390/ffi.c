@@ -158,15 +158,9 @@ ffi_prep_cif_machdep(ffi_cif *cif)
 	cif->flags = FFI390_RET_VOID;
 	break;
 
-      /* Structures, complex, int128, and long double are
-         returned via a hidden pointer.  */
+      /* Structures and complex are returned via a hidden pointer.  */
       case FFI_TYPE_STRUCT:
       case FFI_TYPE_COMPLEX:
-      case FFI_TYPE_SINT128:
-      case FFI_TYPE_UINT128:
-#if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
-      case FFI_TYPE_LONGDOUBLE:
-#endif
 	cif->flags = FFI390_RET_STRUCT;
 	n_gpr++;  /* We need one GPR to pass the pointer.  */
 	break;
@@ -180,6 +174,12 @@ ffi_prep_cif_machdep(ffi_cif *cif)
 	cif->flags = FFI390_RET_DOUBLE;
 	break;
 
+#if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
+      case FFI_TYPE_LONGDOUBLE:
+	cif->flags = FFI390_RET_STRUCT;
+	n_gpr++;
+	break;
+#endif
       /* Integer values are returned in gpr 2 (and gpr 3
 	 for 64-bit values on 31-bit machines).  */
       case FFI_TYPE_UINT64:
@@ -216,25 +216,24 @@ ffi_prep_cif_machdep(ffi_cif *cif)
     {
       int type = (*ptr)->type;
 
-      switch (type)
-	{
-	case FFI_TYPE_STRUCT:
-	  type = ffi_check_struct_type (*ptr);
-	  if (type != FFI_TYPE_POINTER)
-	    break;
-	  /* fall through */
-
-	case FFI_TYPE_COMPLEX:
-	case FFI_TYPE_SINT128:
-	case FFI_TYPE_UINT128:
 #if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
-	case FFI_TYPE_LONGDOUBLE:
+      /* 16-byte long double is passed like a struct.  */
+      if (type == FFI_TYPE_LONGDOUBLE)
+	type = FFI_TYPE_STRUCT;
 #endif
-	  type = FFI_TYPE_POINTER;
-	  /* If we pass via pointer, we must reserve space to copy
-	     its data for proper call-by-value semantics.  */
-	  struct_size += ROUND_SIZE ((*ptr)->size);
-	  break;
+
+      /* Check how a structure type is passed.  */
+      if (type == FFI_TYPE_STRUCT || type == FFI_TYPE_COMPLEX)
+	{
+	  if (type == FFI_TYPE_COMPLEX)
+	    type = FFI_TYPE_POINTER;
+	  else
+	    type = ffi_check_struct_type (*ptr);
+
+	  /* If we pass the struct via pointer, we must reserve space
+	     to copy its data for proper call-by-value semantics.  */
+	  if (type == FFI_TYPE_POINTER)
+	    struct_size += ROUND_SIZE ((*ptr)->size);
 	}
 
       /* Now handle all primitive int/float data types.  */
@@ -461,11 +460,10 @@ ffi_call_int(ffi_cif *cif,
 
 #if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
 	case FFI_TYPE_LONGDOUBLE:
+	  /* 16-byte long double is passed via reference.  */
 #endif
 	case FFI_TYPE_COMPLEX:
-	case FFI_TYPE_SINT128:
-	case FFI_TYPE_UINT128:
-	  /* Complex, int128 and long double types are passed via reference. */
+	  /* Complex types are passed via reference.  */
 	  p_struct -= ROUND_SIZE (ty->size);
 	  memcpy (p_struct, arg, ty->size);
 	  val = (uintptr_t)p_struct;

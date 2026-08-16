@@ -32,10 +32,6 @@
 
 #include <gsasl.h>
 
-#if GSASL_VERSION_NUMBER < 0x010600
-#error "requires libgsasl 1.6.0+"
-#endif
-
 bool Curl_auth_gsasl_is_supported(struct Curl_easy *data,
                                   const char *mech,
                                   struct gsasldata *gsasl)
@@ -51,7 +47,6 @@ bool Curl_auth_gsasl_is_supported(struct Curl_easy *data,
   res = gsasl_client_start(gsasl->ctx, mech, &gsasl->client);
   if(res != GSASL_OK) {
     gsasl_done(gsasl->ctx);
-    gsasl->ctx = NULL;
     return FALSE;
   }
 
@@ -59,14 +54,15 @@ bool Curl_auth_gsasl_is_supported(struct Curl_easy *data,
 }
 
 CURLcode Curl_auth_gsasl_start(struct Curl_easy *data,
-                               struct Curl_creds *creds,
+                               const char *userp,
+                               const char *passwdp,
                                struct gsasldata *gsasl)
 {
 #if GSASL_VERSION_NUMBER >= 0x010b00
   int res;
   res =
 #endif
-    gsasl_property_set(gsasl->client, GSASL_AUTHID, creds->user);
+    gsasl_property_set(gsasl->client, GSASL_AUTHID, userp);
 #if GSASL_VERSION_NUMBER >= 0x010b00
   if(res != GSASL_OK) {
     failf(data, "setting AUTHID failed: %s", gsasl_strerror(res));
@@ -77,7 +73,7 @@ CURLcode Curl_auth_gsasl_start(struct Curl_easy *data,
 #if GSASL_VERSION_NUMBER >= 0x010b00
   res =
 #endif
-    gsasl_property_set(gsasl->client, GSASL_PASSWORD, creds->passwd);
+    gsasl_property_set(gsasl->client, GSASL_PASSWORD, passwdp);
 #if GSASL_VERSION_NUMBER >= 0x010b00
   if(res != GSASL_OK) {
     failf(data, "setting PASSWORD failed: %s", gsasl_strerror(res));

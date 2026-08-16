@@ -129,7 +129,7 @@ void addrandom(const unsigned char * buf, unsigned int len)
 	sha256_done(&hs, hashpool);
 }
 
-static void write_urandom(void)
+static void write_urandom()
 {
 #if DROPBEAR_FUZZ
 	if (fuzz.fuzzing) {

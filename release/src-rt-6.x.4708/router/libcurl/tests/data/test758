@@ -39,7 +39,7 @@ https
 lib%TESTNUMBER
 </tool>
 <name>
-HTTPS multi_socket interface transfer with callbacks returning error
+multi_socket interface transfer with callbacks returning error
 </name>
 <command>
 https://localhost:%HTTPSPORT/file%TESTNUMBER

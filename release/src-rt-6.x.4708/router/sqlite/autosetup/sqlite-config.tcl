@@ -1745,12 +1745,8 @@ proc sqlite-handle-env-quirks {} {
   set autoDll 0; # true if --out-implib/--dll-basename should be implied
   set host [get-define host]
   switch -glob -- $host {
-    *-*-darwin* {
-      set instName darwin
-      # We don't look for *apple* because:
-      # https://sqlite.org/forum/forumpost/7b218c3c9f207646
-      # There's at least one Linux out there which matches *apple*.
-    }
+    *apple* -
+    *darwin*    { set instName darwin }
     default {
       set x [sqlite-env-is-unix-on-windows $host]
       if {"" ne $x} {

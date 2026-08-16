@@ -83,14 +83,10 @@ fi
 #
 run_output_test()
 {
-	EXPECTED_EXITVAL=0
 	if [ "$1" = "-o" ] ; then
 		TEST_OUTPUT="$2"
-		shift 2
-	fi
-	if [ "$1" = "--exit" ] ; then
-		EXPECTED_EXITVAL="$2"
-		shift 2
+		shift
+		shift
 	fi
 	TEST_COMMAND="$1"
 	shift
@@ -98,9 +94,9 @@ run_output_test()
 		TEST_OUTPUT=${TEST_COMMAND}
 	fi
 
-	REDIR_OUTPUT="> \"${TEST_OUTPUT}.out\" 2>&1"
+	REDIR_OUTPUT="> \"${TEST_OUTPUT}.out\""
 	if [ $VERBOSE -gt 1 ] ; then
-		REDIR_OUTPUT="2>&1 | tee \"${TEST_OUTPUT}.out\""
+		REDIR_OUTPUT="| tee \"${TEST_OUTPUT}.out\""
 	fi
 
 	if [ $use_valgrind -eq 1 ] ; then
@@ -112,16 +108,15 @@ run_output_test()
 			--show-reachable=yes \
 			--run-libc-freeres=yes \
 		"\"${top_builddir}/${TEST_COMMAND}\"" \"\$@\" ${REDIR_OUTPUT}
-		exitval=$?
+		err=$?
 
 	else
 		eval "\"${top_builddir}/${TEST_COMMAND}"\" \"\$@\" ${REDIR_OUTPUT}
-		exitval=$?
+		err=$?
 	fi
 
-	if [ $exitval -ne $EXPECTED_EXITVAL ] ; then
-		echo "ERROR: \"${TEST_COMMAND} $@\" exited with incorrect exit status: $err != $EXPECTED_EXITVAL" 1>&2
-		err=1
+	if [ $err -ne 0 ] ; then
+		echo "ERROR: \"${TEST_COMMAND} $@\" exited with non-zero exit status: $err" 1>&2
 	fi
 
 	if [ $use_valgrind -eq 1 ] ; then

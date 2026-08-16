@@ -278,12 +278,12 @@ static int read_packet_init() {
 
 	TRACE2(("packet size is %u, block %u mac %u", len, blocksize, macsize))
 
-	/* check packet length. plen max to catch integer wraparound. */
+
+	/* check packet length */
 	if ((len > RECV_MAX_PACKET_LEN) ||
-	    (plen > RECV_MAX_PACKET_LEN) ||
 		(plen < blocksize) ||
 		(plen % blocksize != 0)) {
-		dropbear_exit("Integrity error (bad packet size %u)", plen);
+		dropbear_exit("Integrity error (bad packet size %u)", len);
 	}
 
 	if (len > ses.readbuf->size) {
@@ -475,14 +475,8 @@ static int packet_is_okay_kex(unsigned char type) {
 	return 1;
 }
 
-static void enqueue_reply_packet(void) {
+static void enqueue_reply_packet() {
 	struct packetlist * new_item = NULL;
-
-	if (ses.reply_queue_len > MAX_DEFER_REPLY_QUEUE) {
-		/* This limit should never be reached by a normal peer. */
-		dropbear_exit("Full reply queue");
-	}
-
 	new_item = m_malloc(sizeof(struct packetlist));
 	new_item->next = NULL;
 	
@@ -496,7 +490,6 @@ static void enqueue_reply_packet(void) {
 		ses.reply_queue_head = new_item;
 	}
 	ses.reply_queue_tail = new_item;
-	ses.reply_queue_len++;
 }
 
 void maybe_flush_reply_queue() {
@@ -519,7 +512,6 @@ void maybe_flush_reply_queue() {
 		encrypt_packet();
 	}
 	ses.reply_queue_head = ses.reply_queue_tail = NULL;
-	ses.reply_queue_len = 0;
 }
 	
 /* encrypt the writepayload, putting into writebuf, ready for write_packet()

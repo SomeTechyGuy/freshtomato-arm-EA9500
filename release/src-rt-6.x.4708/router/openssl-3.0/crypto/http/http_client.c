@@ -87,16 +87,6 @@ struct ossl_http_req_ctx_st {
 
 /* Low-level HTTP API implementation */
 
-static int no_crlf(const char *component, const char *value)
-{
-    if (value != NULL && strpbrk(value, "\r\n") != NULL) {
-        ERR_raise_data(ERR_LIB_HTTP, ERR_R_PASSED_INVALID_ARGUMENT,
-            "CR or LF character in %s", component);
-        return 0;
-    }
-    return 1;
-}
-
 OSSL_HTTP_REQ_CTX *OSSL_HTTP_REQ_CTX_new(BIO *wbio, BIO *rbio, int buf_size)
 {
     OSSL_HTTP_REQ_CTX *rctx;
@@ -185,10 +175,6 @@ int OSSL_HTTP_REQ_CTX_set_request_line(OSSL_HTTP_REQ_CTX *rctx, int method_POST,
         ERR_raise(ERR_LIB_HTTP, ERR_R_PASSED_NULL_PARAMETER);
         return 0;
     }
-    if (!no_crlf("server", server)
-        || !no_crlf("port", port)
-        || !no_crlf("path", path))
-        return 0;
     BIO_free(rctx->mem);
     if ((rctx->mem = BIO_new(BIO_s_mem())) == NULL)
         return 0;
@@ -242,9 +228,6 @@ int OSSL_HTTP_REQ_CTX_add1_header(OSSL_HTTP_REQ_CTX *rctx,
         ERR_raise(ERR_LIB_HTTP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
         return 0;
     }
-    if (!no_crlf("header name", name)
-        || !no_crlf("header value", value))
-        return 0;
 
     if (BIO_puts(rctx->mem, name) <= 0)
         return 0;
@@ -314,7 +297,7 @@ static int set1_content(OSSL_HTTP_REQ_CTX *rctx,
     }
 
     if (content_type != NULL
-        && !OSSL_HTTP_REQ_CTX_add1_header(rctx, "Content-Type", content_type))
+        && BIO_printf(rctx->mem, "Content-Type: %s\r\n", content_type) <= 0)
         return 0;
 
     /*
@@ -1324,11 +1307,11 @@ int OSSL_HTTP_proxy_connect(BIO *bio, const char *server, const char *port,
 {
 #undef BUF_SIZE
 #define BUF_SIZE (8 * 1024)
-    char *mbuf = NULL;
+    char *mbuf = OPENSSL_malloc(BUF_SIZE);
     char *mbufp;
     int read_len = 0;
     int ret = 0;
-    BIO *fbio = NULL;
+    BIO *fbio = BIO_new(BIO_f_buffer());
     int rv;
     time_t max_time = timeout > 0 ? time(NULL) + timeout : 0;
 
@@ -1339,11 +1322,8 @@ int OSSL_HTTP_proxy_connect(BIO *bio, const char *server, const char *port,
     }
     if (port == NULL || *port == '\0')
         port = OSSL_HTTPS_PORT;
-    if (!no_crlf("server", server) || !no_crlf("port", port))
-        goto end;
 
-    if ((mbuf = OPENSSL_malloc(BUF_SIZE)) == NULL
-        || (fbio = BIO_new(BIO_f_buffer())) == NULL) {
+    if (mbuf == NULL || fbio == NULL) {
         BIO_printf(bio_err /* may be NULL */, "%s: out of memory", prog);
         goto end;
     }

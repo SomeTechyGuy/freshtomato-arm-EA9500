@@ -286,9 +286,6 @@ AvahiSAddressResolver *avahi_s_address_resolver_new(
         AvahiSAddressResolver *b;
 
         b = avahi_s_address_resolver_prepare(server, interface, protocol, address, flags, callback, userdata);
-        if (!b)
-            return NULL;
-
         avahi_s_address_resolver_start(b);
 
         return b;

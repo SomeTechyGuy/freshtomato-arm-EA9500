@@ -5,6 +5,7 @@
 HTTP
 HTTP GET
 chunked Transfer-Encoding
+FAILURE
 </keywords>
 </info>
 # Server-side
